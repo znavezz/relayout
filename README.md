@@ -60,9 +60,12 @@ On first launch, macOS will ask you to grant **Accessibility** permission (Syste
 
 ```sh
 cmd-m --hotkey ctrl+alt+m
+cmd-m --hotkey cmd+fn       # modifier-only chord using the fn/Globe key
 ```
 
 Modifiers: `cmd`, `ctrl`, `alt`, `shift` (at least one required). Keys: `a`–`z`, `0`–`9`, `space`, `tab`, `f1`–`f12`.
+
+A chord containing `fn` (or `globe`) uses no regular key at all — it fires when the listed modifiers are held together (e.g. `cmd+fn`). Nothing in macOS uses these combinations, so they never clash with app shortcuts like ⌘M = minimize. Works on Apple keyboards; some third-party keyboards handle fn internally and never report it to macOS.
 
 #### Start at login
 

@@ -1,24 +1,47 @@
+import AppKit
 import Carbon
 import Foundation
 
-/// A parsed global hotkey, e.g. "cmd+m" or "ctrl+alt+h".
+/// A parsed global hotkey: either modifiers + a key ("cmd+m"), or a
+/// modifier-only chord involving the fn/Globe key ("cmd+fn").
 struct HotKeySpec {
-    let carbonModifiers: UInt32
-    let keyCode: UInt32
+    enum Trigger {
+        case key(keyCode: UInt32, carbonModifiers: UInt32)
+        case modifierChord(NSEvent.ModifierFlags)
+    }
+
+    let trigger: Trigger
     let display: String
 
     static let `default` = HotKeySpec(
-        carbonModifiers: UInt32(cmdKey),
-        keyCode: UInt32(kVK_ANSI_M),
+        trigger: .key(keyCode: UInt32(kVK_ANSI_M), carbonModifiers: UInt32(cmdKey)),
         display: "cmd+m"
     )
 
-    /// Parses strings like "cmd+shift+m". Modifier names: cmd/command,
-    /// ctrl/control, alt/opt/option, shift. The last token is the key.
+    /// Parses strings like "cmd+shift+m" or "cmd+fn". Modifier names:
+    /// cmd/command, ctrl/control, alt/opt/option, shift, fn/globe.
+    /// With fn, all tokens must be modifiers (the chord fires when they are
+    /// all held); otherwise the last token is the key.
     static func parse(_ string: String) -> HotKeySpec? {
         let tokens = string.lowercased().split(separator: "+").map(String.init)
-        guard let keyToken = tokens.last, tokens.count >= 2 else { return nil }
+        guard tokens.count >= 2 else { return nil }
 
+        if tokens.contains("fn") || tokens.contains("globe") {
+            var flags: NSEvent.ModifierFlags = []
+            for token in tokens {
+                switch token {
+                case "cmd", "command": flags.insert(.command)
+                case "ctrl", "control": flags.insert(.control)
+                case "alt", "opt", "option": flags.insert(.option)
+                case "shift": flags.insert(.shift)
+                case "fn", "globe": flags.insert(.function)
+                default: return nil // fn chords cannot include a regular key
+                }
+            }
+            return HotKeySpec(trigger: .modifierChord(flags), display: string.lowercased())
+        }
+
+        guard let keyToken = tokens.last else { return nil }
         var modifiers: UInt32 = 0
         for token in tokens.dropLast() {
             switch token {
@@ -30,7 +53,10 @@ struct HotKeySpec {
             }
         }
         guard modifiers != 0, let keyCode = keyCodes[keyToken] else { return nil }
-        return HotKeySpec(carbonModifiers: modifiers, keyCode: keyCode, display: string.lowercased())
+        return HotKeySpec(
+            trigger: .key(keyCode: keyCode, carbonModifiers: modifiers),
+            display: string.lowercased()
+        )
     }
 
     private static let keyCodes: [String: UInt32] = [
@@ -55,15 +81,44 @@ struct HotKeySpec {
     ]
 }
 
-/// Registers a system-wide hotkey via the Carbon hotkey API.
+/// Registers a system-wide hotkey. Regular key combos use the Carbon hotkey
+/// API; fn/Globe chords are detected by monitoring modifier-state changes
+/// (which requires the same Accessibility permission the app already needs).
 final class HotKeyCenter {
     private var hotKeyRef: EventHotKeyRef?
     private var eventHandlerRef: EventHandlerRef?
+    private var flagsMonitor: Any?
+    private var chordFired = false
     private let handler: () -> Void
 
     init(spec: HotKeySpec, handler: @escaping () -> Void) {
         self.handler = handler
 
+        switch spec.trigger {
+        case let .key(keyCode, carbonModifiers):
+            registerCarbonHotKey(keyCode: keyCode, carbonModifiers: carbonModifiers)
+        case let .modifierChord(flags):
+            monitorModifierChord(flags)
+        }
+    }
+
+    private func monitorModifierChord(_ chord: NSEvent.ModifierFlags) {
+        let relevant: NSEvent.ModifierFlags = [.command, .control, .option, .shift, .function]
+        flagsMonitor = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
+            guard let self else { return }
+            let current = event.modifierFlags.intersection(relevant)
+            if current == chord {
+                if !self.chordFired {
+                    self.chordFired = true
+                    self.handler()
+                }
+            } else {
+                self.chordFired = false
+            }
+        }
+    }
+
+    private func registerCarbonHotKey(keyCode: UInt32, carbonModifiers: UInt32) {
         var eventType = EventTypeSpec(
             eventClass: OSType(kEventClassKeyboard),
             eventKind: UInt32(kEventHotKeyPressed)
@@ -85,8 +140,8 @@ final class HotKeyCenter {
 
         let hotKeyID = EventHotKeyID(signature: OSType(0x434D_444D), id: 1) // 'CMDM'
         RegisterEventHotKey(
-            spec.keyCode,
-            spec.carbonModifiers,
+            keyCode,
+            carbonModifiers,
             hotKeyID,
             GetEventDispatcherTarget(),
             0,
@@ -97,5 +152,6 @@ final class HotKeyCenter {
     deinit {
         if let hotKeyRef { UnregisterEventHotKey(hotKeyRef) }
         if let eventHandlerRef { RemoveEventHandler(eventHandlerRef) }
+        if let flagsMonitor { NSEvent.removeMonitor(flagsMonitor) }
     }
 }

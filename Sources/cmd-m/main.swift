@@ -13,6 +13,7 @@ func printUsage() {
     Usage:
       cmd-m                     Run in the menu bar (default hotkey: cmd+m)
       cmd-m --hotkey <combo>    Run with a custom hotkey, e.g. --hotkey ctrl+alt+m
+                                or a fn/Globe chord, e.g. --hotkey cmd+fn
       cmd-m --no-menubar        Run without a menu bar icon (pure background agent)
       cmd-m --convert [text]    Convert text and print it; reads stdin if no text given
       cmd-m --switch --convert  Also switch the active layout (used by the Quick Action)
