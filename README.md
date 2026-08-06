@@ -23,15 +23,31 @@ Because it detects the source layout automatically, the same hotkey converts in 
 
 ## Install
 
-Requires macOS 13+, Xcode command line tools (`xcode-select --install`), and **at least two keyboard layouts enabled** in System Settings → Keyboard → Input Sources.
+Requires macOS 13+ and **at least two keyboard layouts enabled** in System Settings → Keyboard → Input Sources.
+
+### Easiest — the app (no terminal, no developer tools)
+
+1. Download **relayout.app.zip** from the [latest release](https://github.com/znavezz/relayout/releases/latest), unzip, and drag **relayout.app** into Applications.
+2. Open it. The first time, macOS blocks apps from unidentified developers — go to **System Settings → Privacy & Security** and click **"Open Anyway"**. (This one-time step exists because relayout isn't notarized with a paid Apple developer subscription; the full source is right here if you want to audit or build it yourself.)
+3. Enable **relayout** under **Privacy & Security → Accessibility** when prompted.
+
+That's everything: it starts at login by itself, installs the Quick Action for native apps, and the **⇄** menu bar icon manages the shortcut.
+
+### Terminal one-liner — prebuilt, still no developer tools
+
+```sh
+curl -L https://github.com/znavezz/relayout/releases/latest/download/relayout-macos.tar.gz | tar xz
+cd relayout-macos && ./install.sh
+```
+
+### From source
+
+Needs the Xcode command line tools (`xcode-select --install`).
 
 ```sh
 git clone https://github.com/znavezz/relayout.git
 cd relayout
 ```
-
-(No git? Same thing without it:
-`curl -L https://github.com/znavezz/relayout/archive/refs/heads/main.tar.gz | tar xz && cd relayout-main`)
 
 Then pick one of the two ways to run it:
 
