@@ -2,14 +2,14 @@
 import PackageDescription
 
 let package = Package(
-    name: "cmd-m",
+    name: "relayout",
     platforms: [
         .macOS(.v13)
     ],
     targets: [
         .executableTarget(
-            name: "cmd-m",
-            path: "Sources/cmd-m"
+            name: "relayout",
+            path: "Sources/relayout"
         )
     ]
 )

@@ -59,7 +59,7 @@
 				<key>ActionParameters</key>
 				<dict>
 					<key>COMMAND_STRING</key>
-					<string>for p in "$HOME/.local/bin/cmd-m" /usr/local/bin/cmd-m /opt/homebrew/bin/cmd-m; do
+					<string>for p in "$HOME/.local/bin/relayout" /usr/local/bin/relayout /opt/homebrew/bin/relayout; do
   if [ -x "$p" ]; then
     exec "$p" --switch --convert
   fi

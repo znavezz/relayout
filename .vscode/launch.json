@@ -19,6 +19,46 @@
 			"target": "cmd-m",
 			"configuration": "release",
 			"preLaunchTask": "swift: Build Release cmd-m"
+		},
+		{
+			"type": "swift",
+			"request": "launch",
+			"args": [],
+			"cwd": "${workspaceFolder:cmd-m}",
+			"name": "Debug akuo",
+			"target": "akuo",
+			"configuration": "debug",
+			"preLaunchTask": "swift: Build Debug akuo"
+		},
+		{
+			"type": "swift",
+			"request": "launch",
+			"args": [],
+			"cwd": "${workspaceFolder:cmd-m}",
+			"name": "Release akuo",
+			"target": "akuo",
+			"configuration": "release",
+			"preLaunchTask": "swift: Build Release akuo"
+		},
+		{
+			"type": "swift",
+			"request": "launch",
+			"args": [],
+			"cwd": "${workspaceFolder:cmd-m}",
+			"name": "Debug relayout",
+			"target": "relayout",
+			"configuration": "debug",
+			"preLaunchTask": "swift: Build Debug relayout"
+		},
+		{
+			"type": "swift",
+			"request": "launch",
+			"args": [],
+			"cwd": "${workspaceFolder:cmd-m}",
+			"name": "Release relayout",
+			"target": "relayout",
+			"configuration": "release",
+			"preLaunchTask": "swift: Build Release relayout"
 		}
 	]
 }

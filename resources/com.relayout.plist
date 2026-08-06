@@ -3,10 +3,10 @@
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.cmd-m</string>
+    <string>com.relayout</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/usr/local/bin/cmd-m</string>
+        <string>/usr/local/bin/relayout</string>
         <!-- Uncomment for a custom hotkey:
         <string>--hotkey</string>
         <string>ctrl+alt+m</string>

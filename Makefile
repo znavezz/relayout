@@ -1,9 +1,9 @@
 # Installs under the user's home by default so no sudo is ever needed.
-# Use PREFIX=/usr/local (with sudo) if you want cmd-m on the default PATH.
+# Use PREFIX=/usr/local (with sudo) if you want relayout on the default PATH.
 PREFIX ?= $(HOME)/.local
 SERVICES_DIR = $(HOME)/Library/Services
 WORKFLOW = Convert Keyboard Layout.workflow
-AGENT_PLIST = $(HOME)/Library/LaunchAgents/com.cmd-m.plist
+AGENT_PLIST = $(HOME)/Library/LaunchAgents/com.relayout.plist
 
 .PHONY: build install install-agent install-quick-action uninstall clean
 
@@ -12,15 +12,15 @@ build:
 
 install: build
 	install -d $(PREFIX)/bin
-	install .build/release/cmd-m $(PREFIX)/bin/cmd-m
+	install .build/release/relayout $(PREFIX)/bin/relayout
 
 # Installs the background agent: starts now and at every login.
 # macOS will show one Accessibility permission prompt — approve it and
-# cmd-m arms itself automatically; no restart needed.
+# relayout arms itself automatically; no restart needed.
 install-agent: install
 	mkdir -p "$(HOME)/Library/LaunchAgents"
-	sed "s|/usr/local/bin/cmd-m|$(PREFIX)/bin/cmd-m|" "resources/com.cmd-m.plist" > "$(AGENT_PLIST)"
-	-launchctl bootout gui/$$(id -u)/com.cmd-m 2>/dev/null
+	sed "s|/usr/local/bin/relayout|$(PREFIX)/bin/relayout|" "resources/com.relayout.plist" > "$(AGENT_PLIST)"
+	-launchctl bootout gui/$$(id -u)/com.relayout 2>/dev/null
 	launchctl bootstrap gui/$$(id -u) "$(AGENT_PLIST)"
 
 # Installs the Quick Action and pre-assigns its shortcut (default ctrl+cmd+M,
@@ -37,8 +37,8 @@ install-quick-action: install
 	-/System/Library/CoreServices/pbs -update
 
 uninstall:
-	-launchctl bootout gui/$$(id -u)/com.cmd-m 2>/dev/null
-	rm -f $(PREFIX)/bin/cmd-m "$(AGENT_PLIST)"
+	-launchctl bootout gui/$$(id -u)/com.relayout 2>/dev/null
+	rm -f $(PREFIX)/bin/relayout "$(AGENT_PLIST)"
 	rm -rf "$(SERVICES_DIR)/$(WORKFLOW)"
 
 clean:

@@ -8,17 +8,17 @@ let arguments = Array(CommandLine.arguments.dropFirst())
 
 func printUsage() {
     print("""
-    cmd-m — retype selected text in your next keyboard layout
+    relayout — retype selected text in your next keyboard layout
 
     Usage:
-      cmd-m                     Run in the menu bar (default hotkey: cmd+fn)
-      cmd-m --hotkey <combo>    Run with a custom hotkey, e.g. --hotkey ctrl+alt+m
+      relayout                     Run in the menu bar (default hotkey: cmd+fn)
+      relayout --hotkey <combo>    Run with a custom hotkey, e.g. --hotkey ctrl+alt+m
                                 or a fn/Globe chord, e.g. --hotkey cmd+fn
-      cmd-m --no-menubar        Run without a menu bar icon (pure background agent)
-      cmd-m --convert [text]    Convert text and print it; reads stdin if no text given
-      cmd-m --switch --convert  Also switch the active layout (used by the Quick Action)
-      cmd-m --layouts           List the enabled keyboard layouts cmd-m sees
-      cmd-m --help              Show this help
+      relayout --no-menubar        Run without a menu bar icon (pure background agent)
+      relayout --convert [text]    Convert text and print it; reads stdin if no text given
+      relayout --switch --convert  Also switch the active layout (used by the Quick Action)
+      relayout --layouts           List the enabled keyboard layouts relayout sees
+      relayout --help              Show this help
 
     Note: --switch must come before --convert; everything after --convert is text.
     """)
@@ -109,9 +109,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var currentCombo = "auto"
     private var axPollTimer: Timer?
 
-    // Explicit domain (~/Library/Preferences/com.cmd-m.plist): an unbundled
+    // Explicit domain (~/Library/Preferences/com.relayout.plist): an unbundled
     // binary has no bundle ID, so UserDefaults.standard is not predictable.
-    private static let defaults = UserDefaults(suiteName: "com.cmd-m") ?? .standard
+    private static let defaults = UserDefaults(suiteName: "com.relayout") ?? .standard
     private static let hotkeyDefaultsKey = "hotkey"
 
     // "auto" arms both defaults at once, so keyboards whose fn key is
@@ -170,7 +170,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         hotKeyCenter = HotKeyCenter(specs: specs) { [weak self] in
             self?.converter.convertSelection()
         }
-        statusItem?.button?.toolTip = "cmd-m — convert selection (\(combo))"
+        statusItem?.button?.toolTip = "relayout — convert selection (\(combo))"
     }
 
     // Rebuilt every time the menu opens, so the permission warning and the
@@ -219,7 +219,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(shortcutItem)
 
         menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Quit cmd-m", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        menu.addItem(NSMenuItem(title: "Quit relayout", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
     }
 
     @objc private func selectPreset(_ sender: NSMenuItem) {

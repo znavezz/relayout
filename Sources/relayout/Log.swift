@@ -1,11 +1,11 @@
 import Foundation
 
-/// Minimal append-only log at ~/Library/Logs/cmd-m.log, for diagnosing
+/// Minimal append-only log at ~/Library/Logs/relayout.log, for diagnosing
 /// permission and hotkey issues that have no visible error surface.
 enum Log {
     private static let url = FileManager.default
         .homeDirectoryForCurrentUser
-        .appendingPathComponent("Library/Logs/cmd-m.log")
+        .appendingPathComponent("Library/Logs/relayout.log")
 
     private static let formatter: DateFormatter = {
         let f = DateFormatter()

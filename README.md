@@ -1,18 +1,21 @@
-# cmd-m
+# relayout
 
-Typed a whole sentence in the wrong keyboard language? Select it, hold **⌘** and tap **Fn/Globe**, and cmd-m retypes it in your other layout — in place, in any app — then switches your keyboard language to match.
+Typed a whole sentence in the wrong keyboard language? Select it, hold **⌘** and tap **Fn/Globe**, and relayout retypes it in your other layout — in place, in any app — then switches your keyboard language to match.
+
+Ever typed `akuo` when you meant `שלום`? Or `ghbdtn` instead of `привет`?
 
 ```
-akuo    ⌘Fn →   שלום
-שלום    ⌘Fn →   akuo
+akuo      ⌘Fn →   שלום
+ghbdtn    ⌘Fn →   привет
+שלום      ⌘Fn →   akuo
 ```
 
-cmd-m is a tiny macOS menu bar utility. It is **layout-agnostic**: it reads the actual keyboard layouts you have enabled in System Settings (Hebrew, Russian, Greek, Arabic, French AZERTY, …) and remaps character-by-character between them using the system's own key layout data. Nothing is hardcoded.
+relayout is a tiny macOS menu bar utility. It is **layout-agnostic**: it reads the actual keyboard layouts you have enabled in System Settings (Hebrew, Russian, Greek, Arabic, French AZERTY, …) and remaps character-by-character between them using the system's own key layout data. Nothing is hardcoded.
 
 ## How it works
 
 1. You select text and press the hotkey (default: **⌘ Fn** — hold ⌘, tap the Fn/Globe key — or **⌘ ?**; both are armed out of the box, so keyboards whose Fn key is invisible to macOS work automatically).
-2. cmd-m copies the selection (simulated ⌘C), figures out which of your enabled layouts the text was typed in, retypes each character in the *next* enabled layout, and pastes the result back (simulated ⌘V).
+2. relayout copies the selection (simulated ⌘C), figures out which of your enabled layouts the text was typed in, retypes each character in the *next* enabled layout, and pastes the result back (simulated ⌘V).
 3. It also **switches your active input source** to the target layout, so you can just keep typing in the right language.
 4. Your previous clipboard text is restored afterwards.
 
@@ -23,8 +26,8 @@ Because it detects the source layout automatically, the same hotkey converts in 
 Requires macOS 13+, Xcode command line tools (`xcode-select --install`), and **at least two keyboard layouts enabled** in System Settings → Keyboard → Input Sources.
 
 ```sh
-git clone https://github.com/znavezz/cmd-m.git
-cd cmd-m
+git clone https://github.com/znavezz/relayout.git
+cd relayout
 ```
 
 Then pick one of the two ways to run it:
@@ -37,9 +40,9 @@ One command installs the binary (to `~/.local/bin`, no sudo), starts the agent n
 make install-agent
 ```
 
-macOS will show **one permission prompt** ("cmd-m would like to control this computer using accessibility features") — click *Open System Settings* and switch **cmd-m** on. That's the only setup: cmd-m detects the grant within seconds and arms itself. The permission is needed to simulate ⌘C/⌘V on your selection.
+macOS will show **one permission prompt** ("relayout would like to control this computer using accessibility features") — click *Open System Settings* and switch **relayout** on. That's the only setup: relayout detects the grant within seconds and arms itself. The permission is needed to simulate ⌘C/⌘V on your selection.
 
-The default hotkey is **⌘ Fn** *or* **⌘ ?** — both are active. The second exists because some non-Apple keyboards handle Fn internally and never report it to macOS. (⌘? globally replaces the rarely-used Help-menu-search shortcut while cmd-m runs.) Presets for other combos — and a **Custom…** option where you type any shortcut you like — are two clicks away in the **⇄** menu bar icon → **Shortcut**.
+The default hotkey is **⌘ Fn** *or* **⌘ ?** — both are active. The second exists because some non-Apple keyboards handle Fn internally and never report it to macOS. (⌘? globally replaces the rarely-used Help-menu-search shortcut while relayout runs.) Presets for other combos — and a **Custom…** option where you type any shortcut you like — are two clicks away in the **⇄** menu bar icon → **Shortcut**.
 
 ### Option B — Quick Action (no background process, native apps only)
 
@@ -59,16 +62,16 @@ Caveat: Services only work in apps that support the macOS Services menu — most
 
 Click the **⇄** menu bar icon → **Shortcut** and pick one — it applies instantly, persists across restarts, and needs no configuration files. The default ("Auto") arms **⌘ Fn** and **⌘ ?** at once. Other presets: both ⌘ keys, both ⇧ keys, ⌃⌘M — plus **Custom…**, where you type any combo (e.g. `ctrl+alt+k`).
 
-The menu also shows a **⚠️ Grant Accessibility Access…** item whenever the permission is missing (e.g. after rebuilding the binary) — click it to jump to the right settings pane; cmd-m detects the grant automatically, no relaunch needed.
+The menu also shows a **⚠️ Grant Accessibility Access…** item whenever the permission is missing (e.g. after rebuilding the binary) — click it to jump to the right settings pane; relayout detects the grant automatically, no relaunch needed.
 
 For scripting or `--no-menubar` setups, the flag still works and overrides the menu choice:
 
 ```sh
-cmd-m --hotkey ctrl+alt+m
-cmd-m --hotkey "cmd+?"      # the second default
-cmd-m --hotkey cmd+fn       # modifier-only chord using the fn/Globe key
-cmd-m --hotkey cmd+cmd      # both Command keys together
-cmd-m --hotkey shift+shift  # both Shift keys together
+relayout --hotkey ctrl+alt+m
+relayout --hotkey "cmd+?"      # the second default
+relayout --hotkey cmd+fn       # modifier-only chord using the fn/Globe key
+relayout --hotkey cmd+cmd      # both Command keys together
+relayout --hotkey shift+shift  # both Shift keys together
 ```
 
 Modifiers: `cmd`, `ctrl`, `alt`, `shift` (at least one required). Keys: `a`–`z`, `0`–`9`, punctuation (`/ ? . , ; ' [ ] \ - =` and backtick), `space`, `tab`, `f1`–`f12`.
@@ -77,15 +80,15 @@ Modifier-only chords (`cmd+fn`, `cmd+alt`, `cmd+cmd`, `shift+shift`, …) use no
 
 #### Start at login
 
-`make install-agent` already registers this (via `~/Library/LaunchAgents/com.cmd-m.plist`). To pass flags like `--no-menubar` or a fixed `--hotkey`, add them to the `ProgramArguments` array in that file and run `launchctl kickstart -k gui/$(id -u)/com.cmd-m`.
+`make install-agent` already registers this (via `~/Library/LaunchAgents/com.relayout.plist`). To pass flags like `--no-menubar` or a fixed `--hotkey`, add them to the `ProgramArguments` array in that file and run `launchctl kickstart -k gui/$(id -u)/com.relayout`.
 
 ## Command line use
 
 ```sh
-cmd-m --convert "akuo"           # prints: שלום
-echo "akuo" | cmd-m --convert    # same, reading stdin
-cmd-m --switch --convert "akuo"  # also switches the active layout
-cmd-m --layouts                  # lists the layouts cmd-m detected
+relayout --convert "akuo"           # prints: שלום
+echo "akuo" | relayout --convert    # same, reading stdin
+relayout --switch --convert "akuo"  # also switches the active layout
+relayout --layouts                  # lists the layouts relayout detected
 ```
 
 (The default install puts the binary in `~/.local/bin`, which may not be on your `PATH` — add it, or install with `sudo make install PREFIX=/usr/local`.)
@@ -103,7 +106,7 @@ cmd-m --layouts                  # lists the layouts cmd-m detected
 make uninstall     # stops the agent, removes the binary, plist, and Quick Action
 ```
 
-Then remove cmd-m from System Settings → Privacy & Security → Accessibility (if you used Option A).
+Then remove relayout from System Settings → Privacy & Security → Accessibility (if you used Option A).
 
 ## License
 
