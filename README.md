@@ -23,7 +23,7 @@ Because it detects the source layout automatically, the same hotkey converts in 
 Requires macOS 13+, Xcode command line tools (`xcode-select --install`), and **at least two keyboard layouts enabled** in System Settings → Keyboard → Input Sources.
 
 ```sh
-git clone https://github.com/YOUR-USERNAME/cmd-m.git
+git clone https://github.com/znavezz/cmd-m.git
 cd cmd-m
 ```
 
@@ -105,3 +105,5 @@ Then remove cmd-m from System Settings → Privacy & Security → Accessibility 
 ## License
 
 [MIT](LICENSE) — fork away.
+
+Maintained by [znavezz](https://github.com/znavezz) · znavez@gmail.com
