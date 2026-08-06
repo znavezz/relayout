@@ -37,9 +37,9 @@ Installs a macOS Service whose shortcut you assign natively in System Settings. 
 make install-quick-action
 ```
 
-Then: **System Settings → Keyboard → Keyboard Shortcuts → Services → Text → "Convert Keyboard Layout"** — enable it and assign a shortcut.
+The shortcut **⌃⌘M** is assigned automatically — nothing to configure. To pick a different one, either pass it at install time (`make install-quick-action SERVICE_SHORTCUT='~@k'` — `@`=cmd `^`=ctrl `~`=alt `$`=shift) or change it later in System Settings → Keyboard → Keyboard Shortcuts → Services → Text → "Convert Keyboard Layout". Apps that were already running see the new service after they're relaunched.
 
-> Pick a shortcut like **⌃⌘M** here. Plain ⌘M won't work as a Services shortcut, because the frontmost app's own menu shortcuts (⌘M = Minimize) take priority over Services.
+> Avoid plain ⌘-letter shortcuts here (⌘M, ⌘J, …): the frontmost app's own menu shortcuts take priority over Services, so they'll silently do the app's thing instead.
 
 Caveat: Services only work in apps that support the macOS Services menu — that's most native apps (Safari, Mail, Notes, Xcode, …) but not all Chromium/Electron apps. If it does nothing in some app, use Option B.
 
