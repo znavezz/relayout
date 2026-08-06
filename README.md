@@ -30,6 +30,9 @@ git clone https://github.com/znavezz/relayout.git
 cd relayout
 ```
 
+(No git? Same thing without it:
+`curl -L https://github.com/znavezz/relayout/archive/refs/heads/main.tar.gz | tar xz && cd relayout-main`)
+
 Then pick one of the two ways to run it:
 
 ### Option A — Background agent (recommended: works in every app)
