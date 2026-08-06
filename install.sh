@@ -24,7 +24,18 @@ install -m 755 relayout "$BIN_DIR/relayout"
 xattr -d com.apple.quarantine "$BIN_DIR/relayout" 2>/dev/null || true
 
 # Background agent: start now and at every login.
-mkdir -p "$HOME/Library/LaunchAgents"
+AGENTS_DIR="$HOME/Library/LaunchAgents"
+mkdir -p "$AGENTS_DIR" 2>/dev/null || true
+if [ ! -w "$AGENTS_DIR" ] || { [ -e "$PLIST" ] && [ ! -w "$PLIST" ]; }; then
+  echo "" >&2
+  echo "Cannot write to $AGENTS_DIR — it is owned by another user" >&2
+  echo "(usually leftovers from an old 'sudo' command). Fix it with:" >&2
+  echo "" >&2
+  echo "    sudo chown -R \"\$USER\" \"$AGENTS_DIR\"" >&2
+  echo "" >&2
+  echo "then run ./install.sh again." >&2
+  exit 1
+fi
 sed "s|/usr/local/bin/relayout|$BIN_DIR/relayout|" "resources/com.relayout.plist" > "$PLIST"
 launchctl bootout "gui/$(id -u)/com.relayout" 2>/dev/null || true
 launchctl bootstrap "gui/$(id -u)" "$PLIST" || { sleep 2; launchctl bootstrap "gui/$(id -u)" "$PLIST"; }
