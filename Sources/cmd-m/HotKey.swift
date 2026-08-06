@@ -51,19 +51,26 @@ struct HotKeySpec {
             break
         }
 
-        if tokens.contains("fn") || tokens.contains("globe") {
-            var flags: NSEvent.ModifierFlags = []
-            for token in tokens {
-                switch token {
-                case "cmd", "command": flags.insert(.command)
-                case "ctrl", "control": flags.insert(.control)
-                case "alt", "opt", "option": flags.insert(.option)
-                case "shift": flags.insert(.shift)
-                case "fn", "globe": flags.insert(.function)
-                default: return nil // fn chords cannot include a regular key
-                }
+        // All tokens are modifiers → a modifier-only chord ("cmd+fn",
+        // "cmd+alt"). Chords fire on release, and only when no regular key
+        // was pressed while they were held — so a chord that is the prefix
+        // of a real shortcut (⌥⌘I, ⌥⌘Esc, …) never falsely triggers.
+        let chordFlags = tokens.reduce(into: NSEvent.ModifierFlags()) { flags, token in
+            switch token {
+            case "cmd", "command": flags.insert(.command)
+            case "ctrl", "control": flags.insert(.control)
+            case "alt", "opt", "option": flags.insert(.option)
+            case "shift": flags.insert(.shift)
+            case "fn", "globe": flags.insert(.function)
+            default: break
             }
-            return HotKeySpec(trigger: .modifierChord(flags), display: normalized)
+        }
+        let modifierNames: Set<String> = [
+            "cmd", "command", "ctrl", "control", "alt", "opt", "option", "shift", "fn", "globe",
+        ]
+        if tokens.allSatisfy(modifierNames.contains) {
+            guard !chordFlags.isEmpty else { return nil }
+            return HotKeySpec(trigger: .modifierChord(chordFlags), display: normalized)
         }
 
         guard let keyToken = tokens.last else { return nil }
@@ -112,12 +119,20 @@ struct HotKeySpec {
 /// already requires (NSEvent global keyboard monitors would silently need the
 /// separate Input Monitoring permission instead).
 final class HotKeyCenter {
+    /// A modifier-only chord: `matches` tests the full requirement (including
+    /// left/right device bits); `flags` is the plain-modifier requirement used
+    /// to tell "released a chord key" from "added another modifier".
+    private struct Chord {
+        let flags: CGEventFlags
+        let matches: (CGEvent) -> Bool
+    }
+
     private var hotKeyRefs: [EventHotKeyRef] = []
     private var eventHandlerRef: EventHandlerRef?
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
-    private var chordMatchers: [(CGEvent) -> Bool] = []
-    private var chordFired = false
+    private var chords: [Chord] = []
+    private var armedChord: Int?
     private let handler: () -> Void
 
     private static let relevantFlags: CGEventFlags = [
@@ -139,25 +154,28 @@ final class HotKeyCenter {
                 if chord.contains(.option) { flags.insert(.maskAlternate) }
                 if chord.contains(.shift) { flags.insert(.maskShift) }
                 if chord.contains(.function) { flags.insert(.maskSecondaryFn) }
-                chordMatchers.append { event in
+                chords.append(Chord(flags: flags) { event in
                     event.flags.intersection(HotKeyCenter.relevantFlags) == flags
-                }
+                })
 
             case let .bothKeys(pair):
-                chordMatchers.append { event in
+                chords.append(Chord(flags: pair.flag) { event in
                     event.flags.intersection(HotKeyCenter.relevantFlags) == pair.flag
                         && event.flags.rawValue & pair.deviceBits == pair.deviceBits
-                }
+                })
             }
         }
 
-        if !chordMatchers.isEmpty {
+        if !chords.isEmpty {
             installEventTap()
         }
     }
 
     private func installEventTap() {
+        // keyDown is watched only to cancel an armed chord when the user is
+        // actually typing a longer shortcut (e.g. ⌥⌘I); keys pass through.
         let mask = CGEventMask(1 << CGEventType.flagsChanged.rawValue)
+            | CGEventMask(1 << CGEventType.keyDown.rawValue)
         let selfPtr = Unmanaged.passUnretained(self).toOpaque()
         eventTap = CGEvent.tapCreate(
             tap: .cgSessionEventTap,
@@ -180,23 +198,32 @@ final class HotKeyCenter {
         runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, eventTap, 0)
         CFRunLoopAddSource(CFRunLoopGetMain(), runLoopSource, .commonModes)
         CGEvent.tapEnable(tap: eventTap, enable: true)
-        Log.write("chord: event tap installed (\(chordMatchers.count) chord(s))")
+        Log.write("chord: event tap installed (\(chords.count) chord(s))")
     }
 
+    // Release-to-fire: holding exactly a chord "arms" it; releasing it fires,
+    // unless a regular key was pressed or another modifier was added while it
+    // was held. This lets prefix-of-real-shortcut chords like ⌘⌥ stay safe.
     private func handleTapEvent(type: CGEventType, event: CGEvent) {
         // macOS disables taps it considers unresponsive; re-enable and move on.
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
             if let eventTap { CGEvent.tapEnable(tap: eventTap, enable: true) }
             return
         }
-        if chordMatchers.contains(where: { $0(event) }) {
-            if !chordFired {
-                chordFired = true
+        if type == .keyDown {
+            armedChord = nil
+            return
+        }
+
+        if let index = chords.firstIndex(where: { $0.matches(event) }) {
+            armedChord = index
+        } else if let index = armedChord {
+            armedChord = nil
+            let current = event.flags.intersection(Self.relevantFlags)
+            if current.isSubset(of: chords[index].flags) {
                 Log.write("chord: fired")
                 DispatchQueue.main.async { self.handler() }
             }
-        } else {
-            chordFired = false
         }
     }
 

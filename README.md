@@ -11,7 +11,7 @@ cmd-m is a tiny macOS menu bar utility. It is **layout-agnostic**: it reads the 
 
 ## How it works
 
-1. You select text and press the hotkey (default: **⌘ Fn** — hold ⌘, tap the Fn/Globe key — or **both ⌘ keys together**; both are armed out of the box, so keyboards whose Fn key is invisible to macOS work automatically).
+1. You select text and press the hotkey (default: **⌘ Fn** — hold ⌘, tap the Fn/Globe key — or **⌘ ⌥** pressed together and released; both are armed out of the box, so keyboards whose Fn key is invisible to macOS work automatically).
 2. cmd-m copies the selection (simulated ⌘C), figures out which of your enabled layouts the text was typed in, retypes each character in the *next* enabled layout, and pastes the result back (simulated ⌘V).
 3. It also **switches your active input source** to the target layout, so you can just keep typing in the right language.
 4. Your previous clipboard text is restored afterwards.
@@ -39,7 +39,7 @@ make install-agent
 
 macOS will show **one permission prompt** ("cmd-m would like to control this computer using accessibility features") — click *Open System Settings* and switch **cmd-m** on. That's the only setup: cmd-m detects the grant within seconds and arms itself. The permission is needed to simulate ⌘C/⌘V on your selection.
 
-The default hotkey is **⌘ Fn** *or* **both ⌘ keys pressed together** — both chords are active, and neither clashes with any system or app shortcut. The second one exists because some non-Apple keyboards handle Fn internally and never report it to macOS. More options (both ⇧ keys, ⌃⌘M, …) are two clicks away in the **⇄** menu bar icon → **Shortcut**.
+The default hotkey is **⌘ Fn** *or* **⌘ ⌥** (the two adjacent keys, pressed together and released) — both chords are active. The second exists because some non-Apple keyboards handle Fn internally and never report it to macOS. Chords fire on *release*, and only if nothing else was pressed meanwhile — so real ⌥⌘ shortcuts like ⌥⌘Esc or ⌥⌘I still work untouched. More options (both ⌘ keys, both ⇧ keys, ⌃⌘M) are two clicks away in the **⇄** menu bar icon → **Shortcut**.
 
 ### Option B — Quick Action (no background process, native apps only)
 
@@ -57,7 +57,7 @@ Caveat: Services only work in apps that support the macOS Services menu — most
 
 #### Changing the hotkey
 
-Click the **⇄** menu bar icon → **Shortcut** and pick one — it applies instantly, persists across restarts, and needs no configuration files. The default ("Auto") arms two modifier-only chords at once — **⌘ Fn** and **both ⌘ keys** — neither of which any app or system shortcut uses. Other presets: both ⇧ keys, ⌃⌘M, ⌃⌥M.
+Click the **⇄** menu bar icon → **Shortcut** and pick one — it applies instantly, persists across restarts, and needs no configuration files. The default ("Auto") arms two modifier-only chords at once — **⌘ Fn** and **⌘ ⌥**. Other presets: both ⌘ keys, both ⇧ keys, ⌃⌘M.
 
 The menu also shows a **⚠️ Grant Accessibility Access…** item whenever the permission is missing (e.g. after rebuilding the binary) — click it to jump to the right settings pane; cmd-m detects the grant automatically, no relaunch needed.
 
@@ -66,13 +66,14 @@ For scripting or `--no-menubar` setups, the flag still works and overrides the m
 ```sh
 cmd-m --hotkey ctrl+alt+m
 cmd-m --hotkey cmd+fn       # modifier-only chord using the fn/Globe key
+cmd-m --hotkey cmd+alt      # adjacent-keys chord
 cmd-m --hotkey cmd+cmd      # both Command keys together
 cmd-m --hotkey shift+shift  # both Shift keys together
 ```
 
 Modifiers: `cmd`, `ctrl`, `alt`, `shift` (at least one required). Keys: `a`–`z`, `0`–`9`, `space`, `tab`, `f1`–`f12`.
 
-Chords (`cmd+fn`, `cmd+cmd`, `shift+shift`) use no regular key at all — they fire when the listed keys are held together. Nothing in macOS uses these combinations, so they never clash with app shortcuts like ⌘M = minimize.
+Modifier-only chords (`cmd+fn`, `cmd+alt`, `cmd+cmd`, `shift+shift`, …) use no regular key at all. They fire when the listed keys are **released together** — and never when another key was pressed in between, so chords that begin real shortcuts (⌥⌘Esc, ⌥⌘I, …) don't clash with them.
 
 #### Start at login
 

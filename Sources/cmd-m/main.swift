@@ -116,14 +116,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     // "auto" arms every clash-free chord at once, so the default works on
     // keyboards with or without a visible fn key.
-    private static let autoCombos = ["cmd+fn", "cmd+cmd"]
+    private static let autoCombos = ["cmd+fn", "cmd+alt"]
     private static let presets: [(title: String, combo: String)] = [
-        ("Auto  — ⌘ Fn or both ⌘ keys", "auto"),
+        ("Auto  — ⌘ Fn or ⌘ ⌥", "auto"),
         ("⌘ Fn", "cmd+fn"),
+        ("⌘ ⌥  — adjacent keys", "cmd+alt"),
         ("Both ⌘ keys", "cmd+cmd"),
         ("Both ⇧ keys", "shift+shift"),
         ("⌃⌘M", "ctrl+cmd+m"),
-        ("⌃⌥M", "ctrl+alt+m"),
     ]
 
     init(cliSpec: HotKeySpec?, showMenuBarItem: Bool) {
