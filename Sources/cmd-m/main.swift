@@ -11,7 +11,7 @@ func printUsage() {
     cmd-m — retype selected text in your next keyboard layout
 
     Usage:
-      cmd-m                     Run in the menu bar (default hotkey: cmd+m)
+      cmd-m                     Run in the menu bar (default hotkey: cmd+fn)
       cmd-m --hotkey <combo>    Run with a custom hotkey, e.g. --hotkey ctrl+alt+m
                                 or a fn/Globe chord, e.g. --hotkey cmd+fn
       cmd-m --no-menubar        Run without a menu bar icon (pure background agent)

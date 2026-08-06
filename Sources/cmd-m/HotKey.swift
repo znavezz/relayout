@@ -13,9 +13,11 @@ struct HotKeySpec {
     let trigger: Trigger
     let display: String
 
+    // ⌘+Fn: a modifier-only chord that no system or app shortcut uses,
+    // so the out-of-the-box hotkey never clashes with anything.
     static let `default` = HotKeySpec(
-        trigger: .key(keyCode: UInt32(kVK_ANSI_M), carbonModifiers: UInt32(cmdKey)),
-        display: "cmd+m"
+        trigger: .modifierChord([.command, .function]),
+        display: "cmd+fn"
     )
 
     /// Parses strings like "cmd+shift+m" or "cmd+fn". Modifier names:

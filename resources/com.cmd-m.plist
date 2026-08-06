@@ -14,7 +14,11 @@
     </array>
     <key>RunAtLoad</key>
     <true/>
+    <!-- Relaunch after a crash, but stay quit when the user quits from the menu. -->
     <key>KeepAlive</key>
-    <false/>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
 </dict>
 </plist>

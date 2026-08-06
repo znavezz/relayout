@@ -1,17 +1,17 @@
 # cmd-m
 
-Typed a whole sentence in the wrong keyboard language? Select it, press **⌘M**, and cmd-m retypes it in your other layout — in place, in any app.
+Typed a whole sentence in the wrong keyboard language? Select it, hold **⌘** and tap **Fn/Globe**, and cmd-m retypes it in your other layout — in place, in any app — then switches your keyboard language to match.
 
 ```
-akuo    ⌘M →   שלום
-שלום    ⌘M →   akuo
+akuo    ⌘Fn →   שלום
+שלום    ⌘Fn →   akuo
 ```
 
 cmd-m is a tiny macOS menu bar utility. It is **layout-agnostic**: it reads the actual keyboard layouts you have enabled in System Settings (Hebrew, Russian, Greek, Arabic, French AZERTY, …) and remaps character-by-character between them using the system's own key layout data. Nothing is hardcoded.
 
 ## How it works
 
-1. You select text and press the hotkey (default **⌘M**).
+1. You select text and press the hotkey (default **⌘ Fn** — hold ⌘, tap the Fn/Globe key).
 2. cmd-m copies the selection (simulated ⌘C), figures out which of your enabled layouts the text was typed in, retypes each character in the *next* enabled layout, and pastes the result back (simulated ⌘V).
 3. It also **switches your active input source** to the target layout, so you can just keep typing in the right language.
 4. Your previous clipboard text is restored afterwards.
@@ -39,7 +39,7 @@ make install-agent
 
 macOS will show **one permission prompt** ("cmd-m would like to control this computer using accessibility features") — click *Open System Settings* and switch **cmd-m** on. That's the only setup: cmd-m detects the grant within seconds and arms itself. The permission is needed to simulate ⌘C/⌘V on your selection.
 
-The default hotkey is **⌘M** (it takes over macOS's "minimize window" while cmd-m runs). To change it, click the **⇄** menu bar icon → **Shortcut** — **⌘ Fn** (hold ⌘, tap the Globe key) is recommended, since it clashes with nothing.
+The default hotkey is **⌘ Fn** — a chord that clashes with no system or app shortcut. If your keyboard has no usable Fn/Globe key (some non-Apple keyboards handle Fn internally), click the **⇄** menu bar icon → **Shortcut** and pick another combo like ⌃⌘M.
 
 ### Option B — Quick Action (no background process, native apps only)
 
@@ -57,7 +57,7 @@ Caveat: Services only work in apps that support the macOS Services menu — most
 
 #### Changing the hotkey
 
-Click the **⇄** menu bar icon → **Shortcut** and pick one — it applies instantly, persists across restarts, and needs no configuration files. **⌘ Fn** (hold ⌘, tap the Fn/Globe key) is the recommended choice: it's a modifier-only chord that no app or system shortcut uses.
+Click the **⇄** menu bar icon → **Shortcut** and pick one — it applies instantly, persists across restarts, and needs no configuration files. The default, **⌘ Fn**, is a modifier-only chord that no app or system shortcut uses; the other presets are there for keyboards where Fn isn't available.
 
 The menu also shows a **⚠️ Grant Accessibility Access…** item whenever the permission is missing (e.g. after rebuilding the binary) — click it to jump to the right settings pane; cmd-m detects the grant automatically, no relaunch needed.
 
