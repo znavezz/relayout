@@ -29,9 +29,21 @@ cd cmd-m
 
 Then pick one of the two ways to run it:
 
-### Option A — Quick Action (no background process)
+### Option A — Background agent (recommended: works in every app)
 
-Installs a macOS Service whose shortcut you assign natively in System Settings. macOS runs it on demand; nothing stays resident and no Accessibility permission is needed.
+One command installs the binary (to `~/.local/bin`, no sudo), starts the agent now, and registers it to start at login:
+
+```sh
+make install-agent
+```
+
+macOS will show **one permission prompt** ("cmd-m would like to control this computer using accessibility features") — click *Open System Settings* and switch **cmd-m** on. That's the only setup: cmd-m detects the grant within seconds and arms itself. The permission is needed to simulate ⌘C/⌘V on your selection.
+
+The default hotkey is **⌘M** (it takes over macOS's "minimize window" while cmd-m runs). To change it, click the **⇄** menu bar icon → **Shortcut** — **⌘ Fn** (hold ⌘, tap the Globe key) is recommended, since it clashes with nothing.
+
+### Option B — Quick Action (no background process, native apps only)
+
+Installs a macOS Service instead: macOS runs it on demand, nothing stays resident, and **no permission is needed at all**.
 
 ```sh
 make install-quick-action
@@ -41,20 +53,7 @@ The shortcut **⌃⌘M** is assigned automatically — nothing to configure. To 
 
 > Avoid plain ⌘-letter shortcuts here (⌘M, ⌘J, …): the frontmost app's own menu shortcuts take priority over Services, so they'll silently do the app's thing instead.
 
-Caveat: Services only work in apps that support the macOS Services menu — that's most native apps (Safari, Mail, Notes, Xcode, …) but not all Chromium/Electron apps. If it does nothing in some app, use Option B.
-
-### Option B — Background agent with a global hotkey (works everywhere)
-
-A single small binary that stays running and owns a truly global hotkey (default **⌘M**):
-
-```sh
-make install        # builds and copies the binary to /usr/local/bin
-cmd-m               # start it (add --no-menubar to hide the menu bar icon)
-```
-
-On first launch, macOS will ask you to grant **Accessibility** permission (System Settings → Privacy & Security → Accessibility) — needed to simulate ⌘C/⌘V. Grant it and relaunch.
-
-> **Note:** ⌘M is macOS's default "minimize window" shortcut. While cmd-m is running it takes over ⌘M globally. If you'd rather keep minimize, pick another hotkey (below).
+Caveat: Services only work in apps that support the macOS Services menu — most native apps (Safari, Mail, Notes, Xcode, …) but **not** Chromium/Electron apps like Chrome or VS Code. If you type in those, use Option A.
 
 #### Changing the hotkey
 
@@ -75,12 +74,7 @@ A chord containing `fn` (or `globe`) uses no regular key at all — it fires whe
 
 #### Start at login
 
-```sh
-cp resources/com.cmd-m.plist ~/Library/LaunchAgents/
-launchctl load ~/Library/LaunchAgents/com.cmd-m.plist
-```
-
-Edit the plist first if you want a custom hotkey or no menu bar icon (add the flags to `ProgramArguments`).
+`make install-agent` already registers this (via `~/Library/LaunchAgents/com.cmd-m.plist`). To pass flags like `--no-menubar` or a fixed `--hotkey`, add them to the `ProgramArguments` array in that file and run `launchctl kickstart -k gui/$(id -u)/com.cmd-m`.
 
 ## Command line use
 
@@ -90,6 +84,8 @@ echo "akuo" | cmd-m --convert    # same, reading stdin
 cmd-m --switch --convert "akuo"  # also switches the active layout
 cmd-m --layouts                  # lists the layouts cmd-m detected
 ```
+
+(The default install puts the binary in `~/.local/bin`, which may not be on your `PATH` — add it, or install with `sudo make install PREFIX=/usr/local`.)
 
 ## Limitations
 
@@ -101,12 +97,10 @@ cmd-m --layouts                  # lists the layouts cmd-m detected
 ## Uninstall
 
 ```sh
-launchctl unload ~/Library/LaunchAgents/com.cmd-m.plist 2>/dev/null
-rm -f ~/Library/LaunchAgents/com.cmd-m.plist /usr/local/bin/cmd-m
-rm -rf ~/Library/Services/"Convert Keyboard Layout.workflow"
+make uninstall     # stops the agent, removes the binary, plist, and Quick Action
 ```
 
-Then remove cmd-m from System Settings → Privacy & Security → Accessibility (if you used Option B).
+Then remove cmd-m from System Settings → Privacy & Security → Accessibility (if you used Option A).
 
 ## License
 
