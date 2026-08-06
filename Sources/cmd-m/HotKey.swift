@@ -73,7 +73,7 @@ struct HotKeySpec {
             return HotKeySpec(trigger: .modifierChord(chordFlags), display: normalized)
         }
 
-        guard let keyToken = tokens.last else { return nil }
+        guard var keyToken = tokens.last else { return nil }
         var modifiers: UInt32 = 0
         for token in tokens.dropLast() {
             switch token {
@@ -83,6 +83,11 @@ struct HotKeySpec {
             case "shift": modifiers |= UInt32(shiftKey)
             default: return nil
             }
+        }
+        // "?" is shift+/ on the physical keyboard.
+        if keyToken == "?" {
+            keyToken = "/"
+            modifiers |= UInt32(shiftKey)
         }
         guard modifiers != 0, let keyCode = keyCodes[keyToken] else { return nil }
         return HotKeySpec(
@@ -106,6 +111,11 @@ struct HotKeySpec {
         "6": UInt32(kVK_ANSI_6), "7": UInt32(kVK_ANSI_7), "8": UInt32(kVK_ANSI_8),
         "9": UInt32(kVK_ANSI_9),
         "space": UInt32(kVK_Space), "tab": UInt32(kVK_Tab),
+        "/": UInt32(kVK_ANSI_Slash), ".": UInt32(kVK_ANSI_Period), ",": UInt32(kVK_ANSI_Comma),
+        ";": UInt32(kVK_ANSI_Semicolon), "'": UInt32(kVK_ANSI_Quote),
+        "[": UInt32(kVK_ANSI_LeftBracket), "]": UInt32(kVK_ANSI_RightBracket),
+        "\\": UInt32(kVK_ANSI_Backslash), "-": UInt32(kVK_ANSI_Minus),
+        "=": UInt32(kVK_ANSI_Equal), "`": UInt32(kVK_ANSI_Grave),
         "f1": UInt32(kVK_F1), "f2": UInt32(kVK_F2), "f3": UInt32(kVK_F3),
         "f4": UInt32(kVK_F4), "f5": UInt32(kVK_F5), "f6": UInt32(kVK_F6),
         "f7": UInt32(kVK_F7), "f8": UInt32(kVK_F8), "f9": UInt32(kVK_F9),

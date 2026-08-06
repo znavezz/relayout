@@ -114,13 +114,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private static let defaults = UserDefaults(suiteName: "com.cmd-m") ?? .standard
     private static let hotkeyDefaultsKey = "hotkey"
 
-    // "auto" arms every clash-free chord at once, so the default works on
-    // keyboards with or without a visible fn key.
-    private static let autoCombos = ["cmd+fn", "cmd+alt"]
+    // "auto" arms both defaults at once, so keyboards whose fn key is
+    // invisible to macOS still work out of the box via ⌘?.
+    private static let autoCombos = ["cmd+fn", "cmd+?"]
     private static let presets: [(title: String, combo: String)] = [
-        ("Auto  — ⌘ Fn or ⌘ ⌥", "auto"),
+        ("Auto  — ⌘ Fn or ⌘ ?", "auto"),
         ("⌘ Fn", "cmd+fn"),
-        ("⌘ ⌥  — adjacent keys", "cmd+alt"),
+        ("⌘ ?", "cmd+?"),
         ("Both ⌘ keys", "cmd+cmd"),
         ("Both ⇧ keys", "shift+shift"),
         ("⌃⌘M", "ctrl+cmd+m"),
@@ -205,6 +205,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             entry.state = preset.combo == currentCombo ? .on : .off
             shortcutMenu.addItem(entry)
         }
+        if !Self.presets.contains(where: { $0.combo == currentCombo }) {
+            let entry = NSMenuItem(title: "Custom: \(currentCombo)", action: nil, keyEquivalent: "")
+            entry.state = .on
+            shortcutMenu.addItem(entry)
+        }
+        shortcutMenu.addItem(.separator())
+        let customItem = NSMenuItem(title: "Custom…", action: #selector(chooseCustomShortcut), keyEquivalent: "")
+        customItem.target = self
+        shortcutMenu.addItem(customItem)
         let shortcutItem = NSMenuItem(title: "Shortcut", action: nil, keyEquivalent: "")
         shortcutItem.submenu = shortcutMenu
         menu.addItem(shortcutItem)
@@ -217,6 +226,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         guard let combo = sender.representedObject as? String else { return }
         Self.defaults.set(combo, forKey: Self.hotkeyDefaultsKey)
         applyHotKey(combo: combo)
+    }
+
+    @objc private func chooseCustomShortcut() {
+        NSApp.activate(ignoringOtherApps: true)
+        let alert = NSAlert()
+        alert.messageText = "Custom Shortcut"
+        alert.informativeText = """
+        Type a combo using cmd, ctrl, alt, shift, fn joined with "+", ending in a key.
+        Examples: ctrl+alt+k · cmd+shift+9 · cmd+? · cmd+fn (modifier-only chord)
+        """
+        let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 240, height: 24))
+        field.placeholderString = "e.g. ctrl+alt+k"
+        field.stringValue = currentCombo == "auto" ? "" : currentCombo
+        alert.accessoryView = field
+        alert.addButton(withTitle: "Set")
+        alert.addButton(withTitle: "Cancel")
+        alert.window.initialFirstResponder = field
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+
+        let combo = field.stringValue.trimmingCharacters(in: .whitespaces).lowercased()
+        if combo == "auto" || HotKeySpec.parse(combo) != nil {
+            Self.defaults.set(combo, forKey: Self.hotkeyDefaultsKey)
+            applyHotKey(combo: combo)
+        } else {
+            let error = NSAlert()
+            error.alertStyle = .warning
+            error.messageText = "Couldn't understand \"\(combo)\""
+            error.informativeText = "Use forms like ctrl+alt+k or cmd+? — modifiers joined with \"+\", ending in a single key (or a modifier-only chord like cmd+fn)."
+            error.runModal()
+        }
     }
 
     @objc private func openAccessibilitySettings() {
