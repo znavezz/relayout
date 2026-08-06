@@ -23,7 +23,7 @@ Because it detects the source layout automatically, the same hotkey converts in 
 
 ## Install
 
-Requires macOS 13+ and **at least two keyboard layouts enabled** in System Settings → Keyboard → Input Sources.
+Requires macOS 10.15 (Catalina) or newer — Apple Silicon and Intel — and **at least two keyboard layouts enabled** in System Settings → Keyboard → Input Sources (on macOS 12 and earlier: System Preferences → Keyboard → Input Sources; the Accessibility permission lives under System Preferences → Security & Privacy → Privacy).
 
 ### Easiest — the app (no terminal, no developer tools)
 

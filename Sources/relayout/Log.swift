@@ -16,9 +16,9 @@ enum Log {
     static func write(_ message: String) {
         let line = "\(formatter.string(from: Date())) \(message)\n"
         if let handle = try? FileHandle(forWritingTo: url) {
-            defer { try? handle.close() }
-            _ = try? handle.seekToEnd()
-            try? handle.write(contentsOf: Data(line.utf8))
+            defer { handle.closeFile() }
+            handle.seekToEndOfFile()
+            handle.write(Data(line.utf8))
         } else {
             try? Data(line.utf8).write(to: url)
         }
