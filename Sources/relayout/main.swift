@@ -1,6 +1,7 @@
 import AppKit
 import Carbon
 import Foundation
+import ServiceManagement
 
 // MARK: - Command line interface
 
@@ -137,6 +138,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         } else {
             applyHotKey(combo: Self.defaults.string(forKey: Self.hotkeyDefaultsKey) ?? "auto")
         }
+        setUpAppBundleExtrasIfNeeded()
         requestAccessibilityIfNeeded()
 
         guard showMenuBarItem else { return }
@@ -272,6 +274,55 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
+    /// When running as a double-clicked relayout.app (rather than a CLI
+    /// binary managed by launchd), set up start-at-login and the Quick
+    /// Action automatically — the app download needs zero terminal steps.
+    private func setUpAppBundleExtrasIfNeeded() {
+        guard Bundle.main.bundleURL.pathExtension == "app" else { return }
+
+        if SMAppService.mainApp.status != .enabled {
+            do {
+                try SMAppService.mainApp.register()
+                Log.write("app: registered as login item")
+            } catch {
+                Log.write("app: login item registration failed: \(error.localizedDescription)")
+            }
+        }
+        installBundledQuickActionIfNeeded()
+    }
+
+    private func installBundledQuickActionIfNeeded() {
+        let fm = FileManager.default
+        guard let source = Bundle.main.url(forResource: "Convert Keyboard Layout", withExtension: "workflow") else { return }
+        let servicesDir = fm.homeDirectoryForCurrentUser.appendingPathComponent("Library/Services")
+        let target = servicesDir.appendingPathComponent("Convert Keyboard Layout.workflow")
+        guard !fm.fileExists(atPath: target.path) else { return }
+
+        do {
+            try fm.createDirectory(at: servicesDir, withIntermediateDirectories: true)
+            try fm.copyItem(at: source, to: target)
+        } catch {
+            Log.write("app: quick action install failed: \(error.localizedDescription)")
+            return
+        }
+        // Pre-assign ⌃⌘M; the key must be passed plist-quoted or `defaults`
+        // tries to parse the leading "(" as an array.
+        runTool("/usr/bin/defaults", [
+            "write", "pbs", "NSServicesStatus", "-dict-add",
+            "\"(null) - Convert Keyboard Layout - runWorkflowAsService\"",
+            "{key_equivalent = \"^@m\"; enabled_services_menu = 1;}",
+        ])
+        runTool("/System/Library/CoreServices/pbs", ["-update"])
+        Log.write("app: quick action installed")
+    }
+
+    private func runTool(_ path: String, _ arguments: [String]) {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: path)
+        process.arguments = arguments
+        try? process.run()
+    }
+
     private func requestAccessibilityIfNeeded() {
         let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
         guard !AXIsProcessTrustedWithOptions(options) else { return }
@@ -285,6 +336,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             self.applyHotKey(combo: self.currentCombo)
         }
     }
+}
+
+// Single-instance guard: someone may have both the .app and a launchd agent
+// installed — two live instances would each register the hotkey and convert
+// the selection twice. First one wins; later ones exit quietly.
+let lockDir = FileManager.default.homeDirectoryForCurrentUser
+    .appendingPathComponent("Library/Application Support/relayout")
+try? FileManager.default.createDirectory(at: lockDir, withIntermediateDirectories: true)
+let lockFD = open(lockDir.appendingPathComponent("instance.lock").path, O_CREAT | O_RDWR, 0o644)
+if lockFD >= 0, flock(lockFD, LOCK_EX | LOCK_NB) != 0 {
+    Log.write("another relayout instance is already running — exiting")
+    exit(0)
 }
 
 let app = NSApplication.shared
