@@ -140,6 +140,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func applyHotKey(_ spec: HotKeySpec) {
         currentSpec = spec
         hotKeyCenter = nil
+        Log.write("hotkey: applying \(spec.display) (accessibility trusted: \(AXIsProcessTrusted()))")
         hotKeyCenter = HotKeyCenter(spec: spec) { [weak self] in
             self?.converter.convertSelection()
         }

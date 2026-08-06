@@ -87,7 +87,9 @@ struct HotKeySpec {
 final class HotKeyCenter {
     private var hotKeyRef: EventHotKeyRef?
     private var eventHandlerRef: EventHandlerRef?
-    private var flagsMonitor: Any?
+    private var eventTap: CFMachPort?
+    private var runLoopSource: CFRunLoopSource?
+    private var chordFlags: CGEventFlags = []
     private var chordFired = false
     private let handler: () -> Void
 
@@ -102,19 +104,60 @@ final class HotKeyCenter {
         }
     }
 
+    // NSEvent global monitors need the separate Input Monitoring permission
+    // for keyboard events, and fail silently without it. A CGEvent tap works
+    // under the Accessibility permission the app already requires.
     private func monitorModifierChord(_ chord: NSEvent.ModifierFlags) {
-        let relevant: NSEvent.ModifierFlags = [.command, .control, .option, .shift, .function]
-        flagsMonitor = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
-            guard let self else { return }
-            let current = event.modifierFlags.intersection(relevant)
-            if current == chord {
-                if !self.chordFired {
-                    self.chordFired = true
-                    self.handler()
+        var flags: CGEventFlags = []
+        if chord.contains(.command) { flags.insert(.maskCommand) }
+        if chord.contains(.control) { flags.insert(.maskControl) }
+        if chord.contains(.option) { flags.insert(.maskAlternate) }
+        if chord.contains(.shift) { flags.insert(.maskShift) }
+        if chord.contains(.function) { flags.insert(.maskSecondaryFn) }
+        chordFlags = flags
+
+        let mask = CGEventMask(1 << CGEventType.flagsChanged.rawValue)
+        let selfPtr = Unmanaged.passUnretained(self).toOpaque()
+        eventTap = CGEvent.tapCreate(
+            tap: .cgSessionEventTap,
+            place: .headInsertEventTap,
+            options: .defaultTap,
+            eventsOfInterest: mask,
+            callback: { _, type, event, userInfo in
+                if let userInfo {
+                    let center = Unmanaged<HotKeyCenter>.fromOpaque(userInfo).takeUnretainedValue()
+                    center.handleTapEvent(type: type, event: event)
                 }
-            } else {
-                self.chordFired = false
+                return Unmanaged.passUnretained(event)
+            },
+            userInfo: selfPtr
+        )
+        guard let eventTap else {
+            Log.write("chord: event tap creation failed — Accessibility permission missing or stale")
+            return
+        }
+        runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, eventTap, 0)
+        CFRunLoopAddSource(CFRunLoopGetMain(), runLoopSource, .commonModes)
+        CGEvent.tapEnable(tap: eventTap, enable: true)
+        Log.write("chord: event tap installed")
+    }
+
+    private func handleTapEvent(type: CGEventType, event: CGEvent) {
+        // macOS disables taps it considers unresponsive; re-enable and move on.
+        if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+            if let eventTap { CGEvent.tapEnable(tap: eventTap, enable: true) }
+            return
+        }
+        let relevant: CGEventFlags = [.maskCommand, .maskControl, .maskAlternate, .maskShift, .maskSecondaryFn]
+        let current = event.flags.intersection(relevant)
+        if current == chordFlags {
+            if !chordFired {
+                chordFired = true
+                Log.write("chord: fired")
+                DispatchQueue.main.async { self.handler() }
             }
+        } else {
+            chordFired = false
         }
     }
 
@@ -152,6 +195,10 @@ final class HotKeyCenter {
     deinit {
         if let hotKeyRef { UnregisterEventHotKey(hotKeyRef) }
         if let eventHandlerRef { RemoveEventHandler(eventHandlerRef) }
-        if let flagsMonitor { NSEvent.removeMonitor(flagsMonitor) }
+        if let eventTap {
+            CGEvent.tapEnable(tap: eventTap, enable: false)
+            CFMachPortInvalidate(eventTap)
+        }
+        if let runLoopSource { CFRunLoopRemoveSource(CFRunLoopGetMain(), runLoopSource, .commonModes) }
     }
 }

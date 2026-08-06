@@ -1,0 +1,24 @@
+{
+	"configurations": [
+		{
+			"type": "swift",
+			"request": "launch",
+			"args": [],
+			"cwd": "${workspaceFolder:cmd-m}",
+			"name": "Debug cmd-m",
+			"target": "cmd-m",
+			"configuration": "debug",
+			"preLaunchTask": "swift: Build Debug cmd-m"
+		},
+		{
+			"type": "swift",
+			"request": "launch",
+			"args": [],
+			"cwd": "${workspaceFolder:cmd-m}",
+			"name": "Release cmd-m",
+			"target": "cmd-m",
+			"configuration": "release",
+			"preLaunchTask": "swift: Build Release cmd-m"
+		}
+	]
+}

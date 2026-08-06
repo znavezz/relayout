@@ -25,16 +25,19 @@ final class SelectionConverter {
                   let selected = self.pasteboard.string(forType: .string),
                   !selected.isEmpty
             else {
-                NSSound.beep() // nothing selected, or the app did not offer text
+                Log.write("convert: copy produced no text (no selection, non-text selection, or ⌘C blocked)")
+                NSSound.beep()
                 self.restore(savedText)
                 return
             }
 
             guard let conversion = LayoutConverter.convert(selected), conversion.text != selected else {
-                NSSound.beep() // fewer than two layouts enabled, or nothing to change
+                Log.write("convert: nothing to change (\(selected.count) chars, or <2 layouts enabled)")
+                NSSound.beep()
                 self.restore(savedText)
                 return
             }
+            Log.write("convert: \(selected.count) chars → \(conversion.target.localizedName)")
 
             self.pasteboard.clearContents()
             self.pasteboard.setString(conversion.text, forType: .string)
