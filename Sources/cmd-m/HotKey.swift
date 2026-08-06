@@ -2,31 +2,54 @@ import AppKit
 import Carbon
 import Foundation
 
-/// A parsed global hotkey: either modifiers + a key ("cmd+m"), or a
-/// modifier-only chord involving the fn/Globe key ("cmd+fn").
+/// A parsed global hotkey: modifiers + a key ("cmd+m"), a modifier-only chord
+/// involving the fn/Globe key ("cmd+fn"), or a left+right pair of the same
+/// modifier ("cmd+cmd", "shift+shift") for keyboards without a visible fn key.
 struct HotKeySpec {
     enum Trigger {
         case key(keyCode: UInt32, carbonModifiers: UInt32)
         case modifierChord(NSEvent.ModifierFlags)
+        case bothKeys(BothKeys)
+    }
+
+    /// Left+right pair of one modifier, told apart via the device-dependent
+    /// bits in CGEventFlags (IOLLEvent.h NX_DEVICE*KEYMASK).
+    enum BothKeys {
+        case command  // 0x08 | 0x10
+        case shift    // 0x02 | 0x04
+
+        var deviceBits: UInt64 {
+            switch self {
+            case .command: return 0x08 | 0x10
+            case .shift: return 0x02 | 0x04
+            }
+        }
+
+        var flag: CGEventFlags {
+            switch self {
+            case .command: return .maskCommand
+            case .shift: return .maskShift
+            }
+        }
     }
 
     let trigger: Trigger
     let display: String
 
-    // ⌘+Fn: a modifier-only chord that no system or app shortcut uses,
-    // so the out-of-the-box hotkey never clashes with anything.
-    static let `default` = HotKeySpec(
-        trigger: .modifierChord([.command, .function]),
-        display: "cmd+fn"
-    )
-
-    /// Parses strings like "cmd+shift+m" or "cmd+fn". Modifier names:
-    /// cmd/command, ctrl/control, alt/opt/option, shift, fn/globe.
-    /// With fn, all tokens must be modifiers (the chord fires when they are
-    /// all held); otherwise the last token is the key.
+    /// Parses strings like "cmd+shift+m", "cmd+fn", "cmd+cmd", "shift+shift".
     static func parse(_ string: String) -> HotKeySpec? {
-        let tokens = string.lowercased().split(separator: "+").map(String.init)
+        let normalized = string.lowercased()
+        let tokens = normalized.split(separator: "+").map(String.init)
         guard tokens.count >= 2 else { return nil }
+
+        switch tokens {
+        case ["cmd", "cmd"], ["command", "command"]:
+            return HotKeySpec(trigger: .bothKeys(.command), display: "cmd+cmd")
+        case ["shift", "shift"]:
+            return HotKeySpec(trigger: .bothKeys(.shift), display: "shift+shift")
+        default:
+            break
+        }
 
         if tokens.contains("fn") || tokens.contains("globe") {
             var flags: NSEvent.ModifierFlags = []
@@ -40,7 +63,7 @@ struct HotKeySpec {
                 default: return nil // fn chords cannot include a regular key
                 }
             }
-            return HotKeySpec(trigger: .modifierChord(flags), display: string.lowercased())
+            return HotKeySpec(trigger: .modifierChord(flags), display: normalized)
         }
 
         guard let keyToken = tokens.last else { return nil }
@@ -57,7 +80,7 @@ struct HotKeySpec {
         guard modifiers != 0, let keyCode = keyCodes[keyToken] else { return nil }
         return HotKeySpec(
             trigger: .key(keyCode: keyCode, carbonModifiers: modifiers),
-            display: string.lowercased()
+            display: normalized
         )
     }
 
@@ -83,41 +106,57 @@ struct HotKeySpec {
     ]
 }
 
-/// Registers a system-wide hotkey. Regular key combos use the Carbon hotkey
-/// API; fn/Globe chords are detected by monitoring modifier-state changes
-/// (which requires the same Accessibility permission the app already needs).
+/// Registers one or more system-wide hotkeys sharing a single action.
+/// Regular key combos use the Carbon hotkey API; modifier chords are detected
+/// with a CGEvent tap, which works under the Accessibility permission the app
+/// already requires (NSEvent global keyboard monitors would silently need the
+/// separate Input Monitoring permission instead).
 final class HotKeyCenter {
-    private var hotKeyRef: EventHotKeyRef?
+    private var hotKeyRefs: [EventHotKeyRef] = []
     private var eventHandlerRef: EventHandlerRef?
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
-    private var chordFlags: CGEventFlags = []
+    private var chordMatchers: [(CGEvent) -> Bool] = []
     private var chordFired = false
     private let handler: () -> Void
 
-    init(spec: HotKeySpec, handler: @escaping () -> Void) {
+    private static let relevantFlags: CGEventFlags = [
+        .maskCommand, .maskControl, .maskAlternate, .maskShift, .maskSecondaryFn,
+    ]
+
+    init(specs: [HotKeySpec], handler: @escaping () -> Void) {
         self.handler = handler
 
-        switch spec.trigger {
-        case let .key(keyCode, carbonModifiers):
-            registerCarbonHotKey(keyCode: keyCode, carbonModifiers: carbonModifiers)
-        case let .modifierChord(flags):
-            monitorModifierChord(flags)
+        for spec in specs {
+            switch spec.trigger {
+            case let .key(keyCode, carbonModifiers):
+                registerCarbonHotKey(keyCode: keyCode, carbonModifiers: carbonModifiers)
+
+            case let .modifierChord(chord):
+                var flags: CGEventFlags = []
+                if chord.contains(.command) { flags.insert(.maskCommand) }
+                if chord.contains(.control) { flags.insert(.maskControl) }
+                if chord.contains(.option) { flags.insert(.maskAlternate) }
+                if chord.contains(.shift) { flags.insert(.maskShift) }
+                if chord.contains(.function) { flags.insert(.maskSecondaryFn) }
+                chordMatchers.append { event in
+                    event.flags.intersection(HotKeyCenter.relevantFlags) == flags
+                }
+
+            case let .bothKeys(pair):
+                chordMatchers.append { event in
+                    event.flags.intersection(HotKeyCenter.relevantFlags) == pair.flag
+                        && event.flags.rawValue & pair.deviceBits == pair.deviceBits
+                }
+            }
+        }
+
+        if !chordMatchers.isEmpty {
+            installEventTap()
         }
     }
 
-    // NSEvent global monitors need the separate Input Monitoring permission
-    // for keyboard events, and fail silently without it. A CGEvent tap works
-    // under the Accessibility permission the app already requires.
-    private func monitorModifierChord(_ chord: NSEvent.ModifierFlags) {
-        var flags: CGEventFlags = []
-        if chord.contains(.command) { flags.insert(.maskCommand) }
-        if chord.contains(.control) { flags.insert(.maskControl) }
-        if chord.contains(.option) { flags.insert(.maskAlternate) }
-        if chord.contains(.shift) { flags.insert(.maskShift) }
-        if chord.contains(.function) { flags.insert(.maskSecondaryFn) }
-        chordFlags = flags
-
+    private func installEventTap() {
         let mask = CGEventMask(1 << CGEventType.flagsChanged.rawValue)
         let selfPtr = Unmanaged.passUnretained(self).toOpaque()
         eventTap = CGEvent.tapCreate(
@@ -141,7 +180,7 @@ final class HotKeyCenter {
         runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, eventTap, 0)
         CFRunLoopAddSource(CFRunLoopGetMain(), runLoopSource, .commonModes)
         CGEvent.tapEnable(tap: eventTap, enable: true)
-        Log.write("chord: event tap installed")
+        Log.write("chord: event tap installed (\(chordMatchers.count) chord(s))")
     }
 
     private func handleTapEvent(type: CGEventType, event: CGEvent) {
@@ -150,9 +189,7 @@ final class HotKeyCenter {
             if let eventTap { CGEvent.tapEnable(tap: eventTap, enable: true) }
             return
         }
-        let relevant: CGEventFlags = [.maskCommand, .maskControl, .maskAlternate, .maskShift, .maskSecondaryFn]
-        let current = event.flags.intersection(relevant)
-        if current == chordFlags {
+        if chordMatchers.contains(where: { $0(event) }) {
             if !chordFired {
                 chordFired = true
                 Log.write("chord: fired")
@@ -164,38 +201,47 @@ final class HotKeyCenter {
     }
 
     private func registerCarbonHotKey(keyCode: UInt32, carbonModifiers: UInt32) {
-        var eventType = EventTypeSpec(
-            eventClass: OSType(kEventClassKeyboard),
-            eventKind: UInt32(kEventHotKeyPressed)
-        )
-        let selfPtr = Unmanaged.passUnretained(self).toOpaque()
-        InstallEventHandler(
-            GetEventDispatcherTarget(),
-            { _, _, userData -> OSStatus in
-                guard let userData else { return OSStatus(eventNotHandledErr) }
-                let center = Unmanaged<HotKeyCenter>.fromOpaque(userData).takeUnretainedValue()
-                center.handler()
-                return noErr
-            },
-            1,
-            &eventType,
-            selfPtr,
-            &eventHandlerRef
-        )
+        if eventHandlerRef == nil {
+            var eventType = EventTypeSpec(
+                eventClass: OSType(kEventClassKeyboard),
+                eventKind: UInt32(kEventHotKeyPressed)
+            )
+            let selfPtr = Unmanaged.passUnretained(self).toOpaque()
+            InstallEventHandler(
+                GetEventDispatcherTarget(),
+                { _, _, userData -> OSStatus in
+                    guard let userData else { return OSStatus(eventNotHandledErr) }
+                    let center = Unmanaged<HotKeyCenter>.fromOpaque(userData).takeUnretainedValue()
+                    center.handler()
+                    return noErr
+                },
+                1,
+                &eventType,
+                selfPtr,
+                &eventHandlerRef
+            )
+        }
 
-        let hotKeyID = EventHotKeyID(signature: OSType(0x434D_444D), id: 1) // 'CMDM'
+        let hotKeyID = EventHotKeyID(
+            signature: OSType(0x434D_444D), // 'CMDM'
+            id: UInt32(hotKeyRefs.count + 1)
+        )
+        var ref: EventHotKeyRef?
         RegisterEventHotKey(
             keyCode,
             carbonModifiers,
             hotKeyID,
             GetEventDispatcherTarget(),
             0,
-            &hotKeyRef
+            &ref
         )
+        if let ref {
+            hotKeyRefs.append(ref)
+        }
     }
 
     deinit {
-        if let hotKeyRef { UnregisterEventHotKey(hotKeyRef) }
+        for ref in hotKeyRefs { UnregisterEventHotKey(ref) }
         if let eventHandlerRef { RemoveEventHandler(eventHandlerRef) }
         if let eventTap {
             CGEvent.tapEnable(tap: eventTap, enable: false)

@@ -106,18 +106,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let converter = SelectionConverter()
     private var hotKeyCenter: HotKeyCenter?
     private var statusItem: NSStatusItem?
-    private var currentSpec = HotKeySpec.default
+    private var currentCombo = "auto"
     private var axPollTimer: Timer?
 
     // Explicit domain (~/Library/Preferences/com.cmd-m.plist): an unbundled
     // binary has no bundle ID, so UserDefaults.standard is not predictable.
     private static let defaults = UserDefaults(suiteName: "com.cmd-m") ?? .standard
     private static let hotkeyDefaultsKey = "hotkey"
+
+    // "auto" arms every clash-free chord at once, so the default works on
+    // keyboards with or without a visible fn key.
+    private static let autoCombos = ["cmd+fn", "cmd+cmd"]
     private static let presets: [(title: String, combo: String)] = [
-        ("⌘ Fn  — clashes with nothing", "cmd+fn"),
+        ("Auto  — ⌘ Fn or both ⌘ keys", "auto"),
+        ("⌘ Fn", "cmd+fn"),
+        ("Both ⌘ keys", "cmd+cmd"),
+        ("Both ⇧ keys", "shift+shift"),
         ("⌃⌘M", "ctrl+cmd+m"),
         ("⌃⌥M", "ctrl+alt+m"),
-        ("⌘M  — overrides Minimize", "cmd+m"),
     ]
 
     init(cliSpec: HotKeySpec?, showMenuBarItem: Bool) {
@@ -126,9 +132,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        let saved = Self.defaults.string(forKey: Self.hotkeyDefaultsKey)
-            .flatMap(HotKeySpec.parse)
-        applyHotKey(cliSpec ?? saved ?? .default)
+        if let cliSpec {
+            applyHotKey(combo: cliSpec.display)
+        } else {
+            applyHotKey(combo: Self.defaults.string(forKey: Self.hotkeyDefaultsKey) ?? "auto")
+        }
         requestAccessibilityIfNeeded()
 
         guard showMenuBarItem else { return }
@@ -140,14 +148,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         statusItem = item
     }
 
-    private func applyHotKey(_ spec: HotKeySpec) {
-        currentSpec = spec
+    private func specs(for combo: String) -> [HotKeySpec] {
+        if combo == "auto" {
+            return Self.autoCombos.compactMap(HotKeySpec.parse)
+        }
+        if let cliSpec, combo == cliSpec.display {
+            return [cliSpec]
+        }
+        return HotKeySpec.parse(combo).map { [$0] } ?? []
+    }
+
+    private func applyHotKey(combo: String) {
+        let specs = specs(for: combo)
+        guard !specs.isEmpty else {
+            applyHotKey(combo: "auto")
+            return
+        }
+        currentCombo = combo
         hotKeyCenter = nil
-        Log.write("hotkey: applying \(spec.display) (accessibility trusted: \(AXIsProcessTrusted()))")
-        hotKeyCenter = HotKeyCenter(spec: spec) { [weak self] in
+        Log.write("hotkey: applying \(combo) (accessibility trusted: \(AXIsProcessTrusted()))")
+        hotKeyCenter = HotKeyCenter(specs: specs) { [weak self] in
             self?.converter.convertSelection()
         }
-        statusItem?.button?.toolTip = "cmd-m — convert selection (\(spec.display))"
+        statusItem?.button?.toolTip = "cmd-m — convert selection (\(combo))"
     }
 
     // Rebuilt every time the menu opens, so the permission warning and the
@@ -167,7 +190,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
 
         let convertItem = NSMenuItem(
-            title: "Convert Selection (\(currentSpec.display))",
+            title: "Convert Selection (\(currentCombo))",
             action: #selector(convertNow),
             keyEquivalent: ""
         )
@@ -179,7 +202,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             let entry = NSMenuItem(title: preset.title, action: #selector(selectPreset(_:)), keyEquivalent: "")
             entry.target = self
             entry.representedObject = preset.combo
-            entry.state = preset.combo == currentSpec.display ? .on : .off
+            entry.state = preset.combo == currentCombo ? .on : .off
             shortcutMenu.addItem(entry)
         }
         let shortcutItem = NSMenuItem(title: "Shortcut", action: nil, keyEquivalent: "")
@@ -191,10 +214,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func selectPreset(_ sender: NSMenuItem) {
-        guard let combo = sender.representedObject as? String,
-              let spec = HotKeySpec.parse(combo) else { return }
+        guard let combo = sender.representedObject as? String else { return }
         Self.defaults.set(combo, forKey: Self.hotkeyDefaultsKey)
-        applyHotKey(spec)
+        applyHotKey(combo: combo)
     }
 
     @objc private func openAccessibilitySettings() {
@@ -221,7 +243,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             guard let self, AXIsProcessTrusted() else { return }
             timer.invalidate()
             self.axPollTimer = nil
-            self.applyHotKey(self.currentSpec)
+            self.applyHotKey(combo: self.currentCombo)
         }
     }
 }
