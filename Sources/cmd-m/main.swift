@@ -109,6 +109,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var currentSpec = HotKeySpec.default
     private var axPollTimer: Timer?
 
+    // Explicit domain (~/Library/Preferences/com.cmd-m.plist): an unbundled
+    // binary has no bundle ID, so UserDefaults.standard is not predictable.
+    private static let defaults = UserDefaults(suiteName: "com.cmd-m") ?? .standard
     private static let hotkeyDefaultsKey = "hotkey"
     private static let presets: [(title: String, combo: String)] = [
         ("⌘ Fn  — clashes with nothing", "cmd+fn"),
@@ -123,7 +126,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        let saved = UserDefaults.standard.string(forKey: Self.hotkeyDefaultsKey)
+        let saved = Self.defaults.string(forKey: Self.hotkeyDefaultsKey)
             .flatMap(HotKeySpec.parse)
         applyHotKey(cliSpec ?? saved ?? .default)
         requestAccessibilityIfNeeded()
@@ -190,7 +193,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func selectPreset(_ sender: NSMenuItem) {
         guard let combo = sender.representedObject as? String,
               let spec = HotKeySpec.parse(combo) else { return }
-        UserDefaults.standard.set(combo, forKey: Self.hotkeyDefaultsKey)
+        Self.defaults.set(combo, forKey: Self.hotkeyDefaultsKey)
         applyHotKey(spec)
     }
 
