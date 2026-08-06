@@ -56,7 +56,13 @@ On first launch, macOS will ask you to grant **Accessibility** permission (Syste
 
 > **Note:** ⌘M is macOS's default "minimize window" shortcut. While cmd-m is running it takes over ⌘M globally. If you'd rather keep minimize, pick another hotkey (below).
 
-#### Custom hotkey
+#### Changing the hotkey
+
+Click the **⇄** menu bar icon → **Shortcut** and pick one — it applies instantly, persists across restarts, and needs no configuration files. **⌘ Fn** (hold ⌘, tap the Fn/Globe key) is the recommended choice: it's a modifier-only chord that no app or system shortcut uses.
+
+The menu also shows a **⚠️ Grant Accessibility Access…** item whenever the permission is missing (e.g. after rebuilding the binary) — click it to jump to the right settings pane; cmd-m detects the grant automatically, no relaunch needed.
+
+For scripting or `--no-menubar` setups, the flag still works and overrides the menu choice:
 
 ```sh
 cmd-m --hotkey ctrl+alt+m

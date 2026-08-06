@@ -24,7 +24,7 @@ func printUsage() {
     """)
 }
 
-var hotKeySpec = HotKeySpec.default
+var cliHotKeySpec: HotKeySpec?
 var showMenuBarItem = true
 var switchLayoutAfterConvert = false
 
@@ -83,10 +83,10 @@ while index < arguments.count {
     case "--hotkey":
         guard index + 1 < arguments.count, let spec = HotKeySpec.parse(arguments[index + 1]) else {
             FileHandle.standardError.write(Data(
-                "Invalid hotkey. Example: --hotkey cmd+shift+m (modifiers: cmd, ctrl, alt, shift)\n".utf8))
+                "Invalid hotkey. Examples: --hotkey cmd+shift+m, --hotkey cmd+fn\n".utf8))
             exit(1)
         }
-        hotKeySpec = spec
+        cliHotKeySpec = spec
         index += 1
 
     default:
@@ -99,44 +99,105 @@ while index < arguments.count {
 
 // MARK: - Menu bar app
 
-final class AppDelegate: NSObject, NSApplicationDelegate {
-    private let spec: HotKeySpec
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
+    /// Hotkey from the command line; overrides the saved choice when present.
+    private let cliSpec: HotKeySpec?
     private let showMenuBarItem: Bool
     private let converter = SelectionConverter()
     private var hotKeyCenter: HotKeyCenter?
     private var statusItem: NSStatusItem?
+    private var currentSpec = HotKeySpec.default
+    private var axPollTimer: Timer?
 
-    init(spec: HotKeySpec, showMenuBarItem: Bool) {
-        self.spec = spec
+    private static let hotkeyDefaultsKey = "hotkey"
+    private static let presets: [(title: String, combo: String)] = [
+        ("⌘ Fn  — clashes with nothing", "cmd+fn"),
+        ("⌃⌘M", "ctrl+cmd+m"),
+        ("⌃⌥M", "ctrl+alt+m"),
+        ("⌘M  — overrides Minimize", "cmd+m"),
+    ]
+
+    init(cliSpec: HotKeySpec?, showMenuBarItem: Bool) {
+        self.cliSpec = cliSpec
         self.showMenuBarItem = showMenuBarItem
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        let saved = UserDefaults.standard.string(forKey: Self.hotkeyDefaultsKey)
+            .flatMap(HotKeySpec.parse)
+        applyHotKey(cliSpec ?? saved ?? .default)
         requestAccessibilityIfNeeded()
 
+        guard showMenuBarItem else { return }
+        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        item.button?.title = "⇄"
+        let menu = NSMenu()
+        menu.delegate = self
+        item.menu = menu
+        statusItem = item
+    }
+
+    private func applyHotKey(_ spec: HotKeySpec) {
+        currentSpec = spec
+        hotKeyCenter = nil
         hotKeyCenter = HotKeyCenter(spec: spec) { [weak self] in
             self?.converter.convertSelection()
         }
+        statusItem?.button?.toolTip = "cmd-m — convert selection (\(spec.display))"
+    }
 
-        guard showMenuBarItem else { return }
+    // Rebuilt every time the menu opens, so the permission warning and the
+    // checkmark on the active shortcut stay current.
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        menu.removeAllItems()
 
-        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        item.button?.title = "⇄"
-        item.button?.toolTip = "cmd-m — convert selection (\(spec.display))"
+        if !AXIsProcessTrusted() {
+            let warn = NSMenuItem(
+                title: "⚠️ Grant Accessibility Access…",
+                action: #selector(openAccessibilitySettings),
+                keyEquivalent: ""
+            )
+            warn.target = self
+            menu.addItem(warn)
+            menu.addItem(.separator())
+        }
 
-        let menu = NSMenu()
         let convertItem = NSMenuItem(
-            title: "Convert Selection (\(spec.display))",
+            title: "Convert Selection (\(currentSpec.display))",
             action: #selector(convertNow),
             keyEquivalent: ""
         )
         convertItem.target = self
         menu.addItem(convertItem)
+
+        let shortcutMenu = NSMenu()
+        for preset in Self.presets {
+            let entry = NSMenuItem(title: preset.title, action: #selector(selectPreset(_:)), keyEquivalent: "")
+            entry.target = self
+            entry.representedObject = preset.combo
+            entry.state = preset.combo == currentSpec.display ? .on : .off
+            shortcutMenu.addItem(entry)
+        }
+        let shortcutItem = NSMenuItem(title: "Shortcut", action: nil, keyEquivalent: "")
+        shortcutItem.submenu = shortcutMenu
+        menu.addItem(shortcutItem)
+
         menu.addItem(.separator())
-        let quitItem = NSMenuItem(title: "Quit cmd-m", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
-        menu.addItem(quitItem)
-        item.menu = menu
-        statusItem = item
+        menu.addItem(NSMenuItem(title: "Quit cmd-m", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+    }
+
+    @objc private func selectPreset(_ sender: NSMenuItem) {
+        guard let combo = sender.representedObject as? String,
+              let spec = HotKeySpec.parse(combo) else { return }
+        UserDefaults.standard.set(combo, forKey: Self.hotkeyDefaultsKey)
+        applyHotKey(spec)
+    }
+
+    @objc private func openAccessibilitySettings() {
+        let pane = "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
+        if let url = URL(string: pane) {
+            NSWorkspace.shared.open(url)
+        }
     }
 
     @objc private func convertNow() {
@@ -148,17 +209,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func requestAccessibilityIfNeeded() {
         let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
-        if !AXIsProcessTrustedWithOptions(options) {
-            print("""
-            cmd-m needs Accessibility permission to read and replace the selection.
-            Grant it in System Settings → Privacy & Security → Accessibility, then relaunch.
-            """)
+        guard !AXIsProcessTrustedWithOptions(options) else { return }
+
+        // Event monitors installed before the permission was granted never
+        // fire, so watch for the grant and re-register — no relaunch needed.
+        axPollTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] timer in
+            guard let self, AXIsProcessTrusted() else { return }
+            timer.invalidate()
+            self.axPollTimer = nil
+            self.applyHotKey(self.currentSpec)
         }
     }
 }
 
 let app = NSApplication.shared
-let delegate = AppDelegate(spec: hotKeySpec, showMenuBarItem: showMenuBarItem)
+let delegate = AppDelegate(cliSpec: cliHotKeySpec, showMenuBarItem: showMenuBarItem)
 app.delegate = delegate
 app.setActivationPolicy(.accessory)
 app.run()
