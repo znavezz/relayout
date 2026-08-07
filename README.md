@@ -127,6 +127,8 @@ sudo chown -R "$USER" ~/Library/LaunchAgents
 
 **The hotkey does nothing** — click the **⇄** menu bar icon: if it shows *⚠️ Grant Accessibility Access*, the permission is missing or went stale (this happens when the binary is replaced by an update — remove the relayout entry in the Accessibility list with **–**, then relaunch and approve the fresh prompt). If there's no ⇄ icon at all, check you're on macOS 10.15+.
 
+**The ⚠️ warning stays even though relayout is enabled in Accessibility** — the enabled row belongs to a *different copy* of the binary (macOS binds this permission to the exact file). Fix, in this order: remove **all** relayout rows from the Accessibility list with **–**, then restart the agent so it asks fresh — `launchctl kickstart -k gui/$(id -u)/com.relayout` — and approve the new prompt. The row that dialog creates always matches the running binary.
+
 **Something else** — check `~/Library/Logs/relayout.log`; every hotkey press, conversion, and permission problem is logged there.
 
 ## Uninstall

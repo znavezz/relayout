@@ -48,7 +48,8 @@ defaults write pbs NSServicesStatus -dict-add '"(null) - Convert Keyboard Layout
 /System/Library/CoreServices/pbs -update 2>/dev/null || true
 
 echo ""
-echo "relayout is installed and running (⇄ in the menu bar)."
+echo "relayout is installed to $BIN_DIR/relayout and running (⇄ in the menu bar)."
+echo "This downloaded folder is just the shipping box — you can delete it now."
 echo ""
 echo "One last step — macOS asks for Accessibility permission:"
 echo "  System Settings → Privacy & Security → Accessibility → enable \"relayout\""

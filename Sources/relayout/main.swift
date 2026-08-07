@@ -288,9 +288,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 }
 
-// Single-instance guard: someone may have both the .app and a launchd agent
-// installed — two live instances would each register the hotkey and convert
-// the selection twice. First one wins; later ones exit quietly.
+// Refuse to run interactively from the unpacked release folder: macOS binds
+// the Accessibility grant to the binary's path, so launching this copy would
+// attach the permission to the wrong file and the installed agent would
+// stay unauthorized — the #1 support trap.
+let executableDir = URL(fileURLWithPath: CommandLine.arguments[0])
+    .resolvingSymlinksInPath().deletingLastPathComponent()
+if FileManager.default.fileExists(atPath: executableDir.appendingPathComponent("install.sh").path) {
+    FileHandle.standardError.write(Data("""
+    This is the installer package copy of relayout — don't run it directly.
+    Run ./install.sh instead: it installs relayout properly and starts it.
+
+    """.utf8))
+    exit(1)
+}
+
+// Single-instance guard: two live instances (e.g. agent + manually launched
+// copy) would each register the hotkey and convert the selection twice.
+// First one wins; later ones exit quietly.
 let lockDir = FileManager.default.homeDirectoryForCurrentUser
     .appendingPathComponent("Library/Application Support/relayout")
 try? FileManager.default.createDirectory(at: lockDir, withIntermediateDirectories: true)
