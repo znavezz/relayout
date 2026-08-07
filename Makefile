@@ -41,19 +41,5 @@ uninstall:
 	rm -f $(PREFIX)/bin/relayout "$(AGENT_PLIST)"
 	rm -rf "$(SERVICES_DIR)/$(WORKFLOW)"
 
-# Builds a double-clickable relayout.app (menu bar app). When launched as an
-# app it registers itself as a login item and installs the Quick Action —
-# no terminal steps for end users.
-APP = relayout.app
-
-app: build
-	rm -rf "$(APP)"
-	mkdir -p "$(APP)/Contents/MacOS" "$(APP)/Contents/Resources"
-	cp .build/release/relayout "$(APP)/Contents/MacOS/relayout"
-	cp resources/Info.plist "$(APP)/Contents/Info.plist"
-	cp -R "resources/$(WORKFLOW)" "$(APP)/Contents/Resources/"
-	codesign --force --deep -s - "$(APP)"
-
 clean:
-	rm -rf "$(APP)"
 	swift package clean

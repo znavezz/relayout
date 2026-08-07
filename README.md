@@ -25,20 +25,16 @@ Because it detects the source layout automatically, the same hotkey converts in 
 
 Requires macOS 10.15 (Catalina) or newer — Apple Silicon and Intel — and **at least two keyboard layouts enabled** in System Settings → Keyboard → Input Sources (on macOS 12 and earlier: System Preferences → Keyboard → Input Sources; the Accessibility permission lives under System Preferences → Security & Privacy → Privacy).
 
-### Easiest — the app (no terminal, no developer tools)
+### Easiest — prebuilt (no developer tools needed)
 
-1. Download **relayout.app.zip** from the [latest release](https://github.com/znavezz/relayout/releases/latest), unzip, and drag **relayout.app** into Applications.
-2. Open it. The first time, macOS blocks apps from unidentified developers — go to **System Settings → Privacy & Security** and click **"Open Anyway"**. (This one-time step exists because relayout isn't notarized with a paid Apple developer subscription; the full source is right here if you want to audit or build it yourself.)
-3. Enable **relayout** under **Privacy & Security → Accessibility** when prompted.
-
-That's everything: it starts at login by itself, installs the Quick Action for native apps, and the **⇄** menu bar icon manages the shortcut.
-
-### Terminal one-liner — prebuilt, still no developer tools
+Paste this into Terminal:
 
 ```sh
 curl -L https://github.com/znavezz/relayout/releases/latest/download/relayout-macos.tar.gz | tar xz
 cd relayout-macos && ./install.sh
 ```
+
+It downloads the prebuilt binary (universal: Apple Silicon + Intel), starts the agent, registers it at login, and installs the Quick Action. Then one manual step, which macOS reserves for humans: enable **relayout** under **System Settings → Privacy & Security → Accessibility** (older macOS: System Preferences → Security & Privacy → Privacy). Done — select wrong-layout text, press **⌘ Fn**.
 
 ### From source
 
@@ -126,8 +122,6 @@ relayout --layouts                  # lists the layouts relayout detected
 ```sh
 sudo chown -R "$USER" ~/Library/LaunchAgents
 ```
-
-**"relayout can't be opened because Apple cannot check it for malicious software"** — the normal first-open warning for apps not notarized with a paid Apple developer subscription. Right-click (Control-click) the app → **Open** → **Open**; needed once only. If no Open button appears: System Settings → Privacy & Security → **Open Anyway** (older macOS: System Preferences → Security & Privacy → General).
 
 **`xcrun: error: unable to find utility "xctest"` (or other build errors)** — your developer tools can't build from source. You don't need them: install a prebuilt build from the [releases page](https://github.com/znavezz/relayout/releases/latest) instead.
 

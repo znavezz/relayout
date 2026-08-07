@@ -1,7 +1,6 @@
 import AppKit
 import Carbon
 import Foundation
-import ServiceManagement
 
 // MARK: - Command line interface
 
@@ -138,7 +137,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         } else {
             applyHotKey(combo: Self.defaults.string(forKey: Self.hotkeyDefaultsKey) ?? "auto")
         }
-        setUpAppBundleExtrasIfNeeded()
         requestAccessibilityIfNeeded()
 
         guard showMenuBarItem else { return }
@@ -274,92 +272,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
-    /// When running as a double-clicked relayout.app (rather than a CLI
-    /// binary managed by launchd), set up start-at-login and the Quick
-    /// Action automatically — the app download needs zero terminal steps.
-    private func setUpAppBundleExtrasIfNeeded() {
-        guard Bundle.main.bundleURL.pathExtension == "app" else { return }
-
-        if #available(macOS 13.0, *) {
-            if SMAppService.mainApp.status != .enabled {
-                do {
-                    try SMAppService.mainApp.register()
-                    Log.write("app: registered as login item")
-                } catch {
-                    Log.write("app: login item registration failed: \(error.localizedDescription)")
-                }
-            }
-        } else {
-            installLoginLaunchAgentFallback()
-        }
-        installBundledQuickActionIfNeeded()
-    }
-
-    /// Pre-macOS 13 has no SMAppService; a LaunchAgent plist pointing into
-    /// the app bundle gives the same start-at-login behavior.
-    private func installLoginLaunchAgentFallback() {
-        guard let executable = Bundle.main.executableURL?.path else { return }
-        let agentsDir = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/LaunchAgents")
-        let plist = agentsDir.appendingPathComponent("com.relayout.plist")
-        guard !FileManager.default.fileExists(atPath: plist.path) else { return }
-        let content = """
-        <?xml version="1.0" encoding="UTF-8"?>
-        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-        <plist version="1.0">
-        <dict>
-            <key>Label</key>
-            <string>com.relayout</string>
-            <key>ProgramArguments</key>
-            <array>
-                <string>\(executable)</string>
-            </array>
-            <key>RunAtLoad</key>
-            <true/>
-            <key>KeepAlive</key>
-            <dict>
-                <key>SuccessfulExit</key>
-                <false/>
-            </dict>
-        </dict>
-        </plist>
-        """
-        try? FileManager.default.createDirectory(at: agentsDir, withIntermediateDirectories: true)
-        try? content.write(to: plist, atomically: true, encoding: .utf8)
-        Log.write("app: login LaunchAgent written (pre-macOS 13)")
-    }
-
-    private func installBundledQuickActionIfNeeded() {
-        let fm = FileManager.default
-        guard let source = Bundle.main.url(forResource: "Convert Keyboard Layout", withExtension: "workflow") else { return }
-        let servicesDir = fm.homeDirectoryForCurrentUser.appendingPathComponent("Library/Services")
-        let target = servicesDir.appendingPathComponent("Convert Keyboard Layout.workflow")
-        guard !fm.fileExists(atPath: target.path) else { return }
-
-        do {
-            try fm.createDirectory(at: servicesDir, withIntermediateDirectories: true)
-            try fm.copyItem(at: source, to: target)
-        } catch {
-            Log.write("app: quick action install failed: \(error.localizedDescription)")
-            return
-        }
-        // Pre-assign ⌃⌘M; the key must be passed plist-quoted or `defaults`
-        // tries to parse the leading "(" as an array.
-        runTool("/usr/bin/defaults", [
-            "write", "pbs", "NSServicesStatus", "-dict-add",
-            "\"(null) - Convert Keyboard Layout - runWorkflowAsService\"",
-            "{key_equivalent = \"^@m\"; enabled_services_menu = 1;}",
-        ])
-        runTool("/System/Library/CoreServices/pbs", ["-update"])
-        Log.write("app: quick action installed")
-    }
-
-    private func runTool(_ path: String, _ arguments: [String]) {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: path)
-        process.arguments = arguments
-        try? process.run()
-    }
 
     private func requestAccessibilityIfNeeded() {
         let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
