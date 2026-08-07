@@ -119,6 +119,22 @@ relayout --layouts                  # lists the layouts relayout detected
 - Input methods without a fixed key map (Chinese, Japanese, Korean IMEs) are skipped; only real key layouts participate.
 - With three or more layouts enabled, conversion cycles to the *next* layout in system order — press again to keep cycling.
 
+## Troubleshooting
+
+**"Permission denied … LaunchAgents/com.relayout.plist" during install** — your `~/Library/LaunchAgents` folder is owned by root (leftovers of some old `sudo` command). Fix the ownership once, then rerun the installer:
+
+```sh
+sudo chown -R "$USER" ~/Library/LaunchAgents
+```
+
+**"relayout can't be opened because Apple cannot check it for malicious software"** — the normal first-open warning for apps not notarized with a paid Apple developer subscription. Right-click (Control-click) the app → **Open** → **Open**; needed once only. If no Open button appears: System Settings → Privacy & Security → **Open Anyway** (older macOS: System Preferences → Security & Privacy → General).
+
+**`xcrun: error: unable to find utility "xctest"` (or other build errors)** — your developer tools can't build from source. You don't need them: install a prebuilt build from the [releases page](https://github.com/znavezz/relayout/releases/latest) instead.
+
+**The hotkey does nothing** — click the **⇄** menu bar icon: if it shows *⚠️ Grant Accessibility Access*, the permission is missing or went stale (this happens when the binary is replaced by an update — remove the relayout entry in the Accessibility list with **–**, then relaunch and approve the fresh prompt). If there's no ⇄ icon at all, check you're on macOS 10.15+.
+
+**Something else** — check `~/Library/Logs/relayout.log`; every hotkey press, conversion, and permission problem is logged there.
+
 ## Uninstall
 
 ```sh
