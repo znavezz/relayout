@@ -9,18 +9,30 @@ match. Same algorithm as the macOS version, same `akuo ⇄ שלום` behavior.
 logic is a direct port of the proven macOS implementation, but the tray app
 has not been field-tested yet. Reports welcome.
 
-## Build & run
+## Install & run
 
-Requires the [.NET SDK](https://dotnet.microsoft.com/download) (6.0+) on
-Windows:
+There is no prebuilt download yet (that comes once the beta is field-tested),
+so for now it runs from source. Full steps, from a blank Windows machine:
 
-```powershell
-cd windows
-dotnet run -c Release
-```
+1. **Install the [.NET SDK](https://dotnet.microsoft.com/download)** (6.0 or
+   newer) — Microsoft's free build tool.
+2. **Get the code** — either:
+   ```powershell
+   git clone https://github.com/znavezz/relayout.git
+   ```
+   or, without git: on the [repository page](https://github.com/znavezz/relayout)
+   click **Code → Download ZIP** and unzip it.
+3. **Build and start it** from wherever the code landed:
+   ```powershell
+   cd relayout\windows
+   dotnet run -c Release
+   ```
 
-To produce a standalone `relayout.exe` (no .NET runtime needed on the target
-machine):
+A tray icon appears; the default hotkey **Ctrl+Alt+/** is live immediately —
+no permission prompts on Windows. "Start with Windows" is enabled on first
+run (toggle it in the tray menu).
+
+To produce a standalone `relayout.exe` (runs on machines without .NET):
 
 ```powershell
 dotnet publish -c Release -r win-x64 --self-contained -p:PublishSingleFile=true
