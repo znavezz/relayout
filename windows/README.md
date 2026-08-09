@@ -12,8 +12,18 @@ has not been field-tested yet. Reports welcome.
 
 ## Install & run
 
-There is no prebuilt download yet (that comes once the beta is field-tested),
-so for now it runs from source. Full steps, from a blank Windows machine:
+### Easiest — prebuilt beta
+
+1. Download **relayout-windows-x64.zip** from the
+   [Windows beta release](https://github.com/znavezz/relayout/releases/tag/windows-v0.1.0)
+   and unzip it.
+2. Double-click **relayout.exe**. SmartScreen will warn about an unknown
+   publisher (the beta isn't code-signed): click **More info → Run anyway**.
+3. That's it — tray icon, **Alt+/** live, autostart on. No other permissions.
+
+### From source
+
+Full steps, from a blank Windows machine:
 
 1. **Install the [.NET SDK](https://dotnet.microsoft.com/download)** (6.0 or
    newer) — Microsoft's free build tool.
