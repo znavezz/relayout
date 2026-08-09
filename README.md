@@ -1,5 +1,7 @@
 # relayout
 
+*(macOS — a beta Windows port lives in [windows/](windows/))*
+
 Typed a whole sentence in the wrong keyboard language? Select it, hold **⌘** and tap **Fn/Globe**, and relayout retypes it in your other layout — in place, in any app — then switches your keyboard language to match.
 
 Ever typed `akuo` when you meant `שלום`? Or `ghbdtn` instead of `привет`?
