@@ -13,4 +13,11 @@
     <Version>0.1.0</Version>
   </PropertyGroup>
 
+  <!-- The Tests subproject is its own compilation unit. -->
+  <ItemGroup>
+    <Compile Remove="Tests/**" />
+    <None Remove="Tests/**" />
+    <InternalsVisibleTo Include="Tests" />
+  </ItemGroup>
+
 </Project>
