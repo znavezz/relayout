@@ -28,6 +28,9 @@ static class Native
     [DllImport("user32.dll")]
     public static extern int GetKeyboardLayoutList(int nBuff, IntPtr[]? lpList);
 
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    public static extern IntPtr LoadKeyboardLayout(string pwszKLID, uint flags);
+
     [DllImport("user32.dll")]
     public static extern uint MapVirtualKeyEx(uint uCode, uint uMapType, IntPtr dwhkl);
 

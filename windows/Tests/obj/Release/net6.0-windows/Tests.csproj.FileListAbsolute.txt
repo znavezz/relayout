@@ -1,0 +1,5 @@
+/Users/znave/Library/Mobile Documents/com~apple~CloudDocs/projects/cmd-m/windows/Tests/obj/Release/net6.0-windows/Tests.csproj.AssemblyReference.cache
+/Users/znave/Library/Mobile Documents/com~apple~CloudDocs/projects/cmd-m/windows/Tests/obj/Release/net6.0-windows/Tests.GeneratedMSBuildEditorConfig.editorconfig
+/Users/znave/Library/Mobile Documents/com~apple~CloudDocs/projects/cmd-m/windows/Tests/obj/Release/net6.0-windows/Tests.AssemblyInfoInputs.cache
+/Users/znave/Library/Mobile Documents/com~apple~CloudDocs/projects/cmd-m/windows/Tests/obj/Release/net6.0-windows/Tests.AssemblyInfo.cs
+/Users/znave/Library/Mobile Documents/com~apple~CloudDocs/projects/cmd-m/windows/Tests/obj/Release/net6.0-windows/Tests.csproj.CoreCompileInputs.cache

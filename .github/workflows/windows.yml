@@ -1,0 +1,17 @@
+name: windows
+
+on:
+  push:
+    paths: ["windows/**", ".github/workflows/windows.yml"]
+  pull_request:
+    paths: ["windows/**", ".github/workflows/windows.yml"]
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build tray app
+        run: dotnet build -c Release windows/relayout.csproj
+      - name: Conversion tests on real Windows keyboard layouts
+        run: dotnet run -c Release --project windows/Tests/Tests.csproj

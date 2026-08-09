@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "czyIqi92heZLvPW4z8JrDT11u3HpE+6jMOjnJzmkSo/eK3YB+b4LMRpV0lWmMgoYbcE0MzarkD8KzlU2otE3gg==",
+  "success": true,
+  "projectFilePath": "/Users/znave/Library/Mobile Documents/com~apple~CloudDocs/projects/cmd-m/windows/Tests/Tests.csproj",
+  "expectedPackageFiles": [
+    "/Users/znave/.nuget/packages/microsoft.windowsdesktop.app.ref/6.0.9/microsoft.windowsdesktop.app.ref.6.0.9.nupkg.sha512"
+  ],
+  "logs": []
+}
