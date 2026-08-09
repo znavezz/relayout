@@ -7,6 +7,7 @@ namespace Relayout;
 static class Native
 {
     public const uint MAPVK_VK_TO_VSC = 0;
+    public const uint MAPVK_VSC_TO_VK_EX = 3;
     public const int WM_HOTKEY = 0x0312;
     public const int WM_INPUTLANGCHANGEREQUEST = 0x0050;
 

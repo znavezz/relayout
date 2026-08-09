@@ -4,8 +4,10 @@ using System.Text;
 
 namespace Relayout;
 
-/// A physical key press: virtual-key code + whether Shift is held.
-readonly record struct KeyStroke(uint Vk, bool Shift);
+/// A physical key press: hardware scan code + whether Shift is held.
+/// Scan codes (not virtual keys) make conversion positional, matching the
+/// macOS implementation — so QWERTY↔AZERTY etc. convert by key position.
+readonly record struct KeyStroke(uint Scan, bool Shift);
 
 /// One installed keyboard layout, with maps between key strokes and the
 /// characters they produce, derived from the system's own layout data.
@@ -16,18 +18,18 @@ sealed class KeyboardLayout
     public Dictionary<KeyStroke, char> CharForStroke { get; } = new();
     public Dictionary<char, KeyStroke> StrokeForChar { get; } = new();
 
-    // Letters, digits, space, and the OEM punctuation keys — every key that
-    // can produce a layout-specific character.
-    static readonly uint[] MappedVks = BuildMappedVks();
+    // The typing-area scan codes: digit row, three letter rows with their
+    // punctuation neighbors, backslash, backtick, and space.
+    static readonly uint[] MappedScanCodes = BuildScanCodes();
 
-    static uint[] BuildMappedVks()
+    static uint[] BuildScanCodes()
     {
-        var vks = new List<uint> { 0x20 }; // space
-        for (uint vk = 0x30; vk <= 0x39; vk++) vks.Add(vk); // 0-9
-        for (uint vk = 0x41; vk <= 0x5A; vk++) vks.Add(vk); // A-Z
-        for (uint vk = 0xBA; vk <= 0xC0; vk++) vks.Add(vk); // ;=,-./`
-        for (uint vk = 0xDB; vk <= 0xDE; vk++) vks.Add(vk); // [\]'
-        return vks.ToArray();
+        var scans = new List<uint> { 0x29, 0x2B, 0x39 }; // ` \ space
+        for (uint sc = 0x02; sc <= 0x0D; sc++) scans.Add(sc); // 1..0 - =
+        for (uint sc = 0x10; sc <= 0x1B; sc++) scans.Add(sc); // q..p [ ]
+        for (uint sc = 0x1E; sc <= 0x28; sc++) scans.Add(sc); // a..l ; '
+        for (uint sc = 0x2C; sc <= 0x35; sc++) scans.Add(sc); // z..m , . /
+        return scans.ToArray();
     }
 
     public KeyboardLayout(IntPtr hkl)
@@ -37,14 +39,15 @@ sealed class KeyboardLayout
 
         var state = new byte[256];
         var buffer = new StringBuilder(8);
-        foreach (var vk in MappedVks)
+        foreach (var scan in MappedScanCodes)
         {
+            uint vk = Native.MapVirtualKeyEx(scan, Native.MAPVK_VSC_TO_VK_EX, hkl);
+            if (vk == 0) continue;
             foreach (var shift in new[] { false, true })
             {
                 Array.Clear(state);
                 if (shift) state[0x10] = 0x80; // VK_SHIFT
                 buffer.Clear();
-                uint scan = Native.MapVirtualKeyEx(vk, Native.MAPVK_VK_TO_VSC, hkl);
                 // 0x4: don't change kernel keyboard state (Win10 1607+), so
                 // probing dead keys can't corrupt the user's typing.
                 int rc = Native.ToUnicodeEx(vk, scan, state, buffer, buffer.Capacity, 0x4, hkl);
@@ -52,7 +55,7 @@ sealed class KeyboardLayout
                 char ch = buffer[0];
                 if (ch < 0x20 || ch == 0x7F) continue;
 
-                var stroke = new KeyStroke(vk, shift);
+                var stroke = new KeyStroke(scan, shift);
                 CharForStroke[stroke] = ch;
                 if (!StrokeForChar.ContainsKey(ch)) StrokeForChar[ch] = stroke;
             }
@@ -96,9 +99,12 @@ static class LayoutConverter
     /// Re-types `text` from the layout it appears to have been written in
     /// into the next installed layout, cycling. Null when fewer than two
     /// layouts are installed.
-    public static Conversion? Convert(string text)
+    public static Conversion? Convert(string text) => ConvertWith(text, InstalledLayouts());
+
+    /// Same conversion against an explicit layout list — lets tests exercise
+    /// language pairs in isolation, regardless of what the machine has loaded.
+    public static Conversion? ConvertWith(string text, List<KeyboardLayout> layouts)
     {
-        var layouts = InstalledLayouts();
         if (layouts.Count < 2) return null;
 
         int sourceIndex = BestSourceLayout(text, layouts);
