@@ -34,7 +34,7 @@ static class Native
     [DllImport("user32.dll")]
     public static extern uint MapVirtualKeyEx(uint uCode, uint uMapType, IntPtr dwhkl);
 
-    [DllImport("user32.dll")]
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     public static extern int ToUnicodeEx(
         uint wVirtKey, uint wScanCode, byte[] lpKeyState,
         StringBuilder pwszBuff, int cchBuff, uint wFlags, IntPtr dwhkl);
