@@ -1,9 +1,10 @@
 # relayout for Windows
 
 The Windows port of [relayout](../README.md): select text typed in the wrong
-keyboard layout, press the hotkey (default **Ctrl+Alt+/**), and it's retyped
-in your next installed layout — and the window's input language switches to
-match. Same algorithm as the macOS version, same `akuo ⇄ שלום` behavior.
+keyboard layout, press the hotkey (default **Alt+/** — hold Alt, tap the `?`
+key), and it's retyped in your next installed layout — and the window's input
+language switches to match. Same algorithm as the macOS version, same
+`akuo ⇄ שלום` behavior.
 
 **Status: beta — needs testing on real Windows machines.** The converter
 logic is a direct port of the proven macOS implementation, but the tray app
@@ -28,7 +29,7 @@ so for now it runs from source. Full steps, from a blank Windows machine:
    dotnet run -c Release
    ```
 
-A tray icon appears; the default hotkey **Ctrl+Alt+/** is live immediately —
+A tray icon appears; the default hotkey **Alt+/** is live immediately —
 no permission prompts on Windows. "Start with Windows" is enabled on first
 run (toggle it in the tray menu).
 
@@ -56,6 +57,6 @@ dotnet publish -c Release -r win-x64 --self-contained -p:PublishSingleFile=true
   grant for this.
 - Keystrokes cannot be injected into windows running **as administrator**
   (Windows blocks that by design), so conversion won't work there.
-- The default Ctrl+Alt+/ avoids AltGr collisions on layouts that use them;
-  if some app owns your chosen combo, relayout falls back to the default and
-  logs it.
+- The default Alt+/ is registered globally, so it wins over apps that use
+  the combo locally; if Windows refuses your chosen combo (another global
+  hotkey owns it), relayout falls back to the default and logs it.

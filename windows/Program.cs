@@ -21,15 +21,15 @@ static class Program
 
 sealed class TrayApp : ApplicationContext
 {
-    const string DefaultCombo = "ctrl+alt+/";
+    const string DefaultCombo = "alt+/";
     const string SettingsKeyPath = @"Software\relayout";
     const string RunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
 
     static readonly (string Title, string Combo)[] Presets =
     {
-        ("Ctrl+Alt+/  (default)", "ctrl+alt+/"),
+        ("Alt+/  (default)", "alt+/"),
+        ("Ctrl+Alt+/", "ctrl+alt+/"),
         ("Ctrl+Alt+K", "ctrl+alt+k"),
-        ("Ctrl+Shift+Z", "ctrl+shift+z"),
         ("Pause key", "pause"),
     };
 
